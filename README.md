@@ -30,10 +30,10 @@
 - **📊 Аналитика** - Подробная статистика и отчеты
 
 ## 🏗️ Архитектура проекта
-
+```
 cyberctf-arena/
 ├── 📁 backend/ # Бэкенд приложение
-│ ├── 📁 app/**
+│ ├── 📁 app/
 │ │ ├── 📁 api/ # API endpoints
 │ │ │ ├── auth.py # Аутентификация
 │ │ │ ├── users.py # Пользователи
@@ -103,7 +103,7 @@ cyberctf-arena/
 ├── docker-compose.yml # Docker Compose
 ├── manage.sh # Скрипт управления
 └── README.md # Документация
-
+```
 
 ## 📋 Требования
 
