@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CyberCTF Arena - Арена</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+        
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            background-color: #262626;
+            color: #FFFFFF;
+        }
+        
+        .form-input {
+            background-color: #1a1a1a;
+            border: 1px solid #333;
+            color: #FFFFFF;
+            padding: 0.75rem;
+            width: 100%;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: #EA000F;
+        }
+        
+        .status-pending { color: #FFA500; }
+        .status-accepted { color: #00FF00; }
+        .status-rejected { color: #FF0000; }
+        
+        .service-online { color: #00FF00; }
+        .service-offline { color: #FF0000; }
+        
+        .target-box {
+            background-color: #1a1a1a;
+            border-left: 3px solid #EA000F;
+            padding: 1rem;
+            font-family: 'Share Tech Mono', monospace;
+        }
+        
+        .service-card {
+            transition: all 0.3s ease;
+        }
+        
+        .service-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(234, 0, 15, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="sticky top-0 z-50 bg-black bg-opacity-80 backdrop-blur-md">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="text-xl font-bold">
+                <span class="text-white">Cyber</span><span class="text-red-600">CTF</span>
+            </div>
+            <nav class="hidden md:flex space-x-8">
+                <a href="index.html" class="text-white hover:text-red-500">Главная</a>
+                <a href="lk.html" class="text-white hover:text-red-500">Кабинет</a>
+                <button id="logout-btn" class="text-white hover:text-red-500">Выйти</button>
+            </nav>
+            <button class="md:hidden text-white">
+                <i data-feather="menu"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Arena Content -->
+    <section class="py-10">
+        <div class="container mx-auto px-4">
+            <h1 class="text-3xl font-bold mb-6">Арена CTF</h1>
+            
+            <!-- Информация о команде и таймер -->
+            <div class="mb-8">
+                <div class="target-box mb-4">
+                    <p>Команда: <span class="text-red-500" id="team-name">-</span></p>
+                    <p>Текущий счет: <span class="text-red-500" id="team-score">0</span> очков</p>
+                    <p>Рейтинг: <span class="text-red-500" id="team-rank">-</span></p>
+                </div>
+                
+                <div class="flex items-center">
+                    <i data-feather="clock" class="w-6 h-6 mr-2 text-red-500"></i>
+                    <span class="text-xl font-mono" id="arena-countdown">--:--:--</span>
+                    <span class="ml-2">до конца соревнований</span>
+                </div>
+            </div>
+            
+            <!-- Мониторинг сервисов -->
+            <div class="bg-gray-800 p-6 rounded-lg mb-8">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold">Мониторинг сервисов</h2>
+                    <button id="refresh-services" class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded text-sm flex items-center">
+                        <i data-feather="refresh-cw" class="w-4 h-4 mr-1"></i>
+                        Обновить
+                    </button>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="services-container">
+                    <!-- Сервисы загружаются через JS -->
+                </div>
+            </div>
+            
+            <!-- Сдача флагов -->
+            <div class="bg-gray-800 p-6 rounded-lg mb-8">
+                <h2 class="text-xl font-bold mb-4">Сдача флагов</h2>
+                
+                <div class="mb-6">
+                    <label class="block mb-2">Выберите задание</label>
+                    <select id="challenge-select" class="form-input mb-3">
+                        <option value="">Выберите задание...</option>
+                    </select>
+                    
+                    <div class="flex">
+                        <input type="text" id="flag-input" class="form-input flex-grow" placeholder="Введите флаг в формате CTF{...}">
+                        <button id="submit-flag" class="ml-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md">
+                            Отправить
+                        </button>
+                    </div>
+                    <div id="flag-result" class="mt-2 hidden"></div>
+                </div>
+            </div>
+            
+            <!-- Лог активности -->
+            <div class="bg-gray-800 p-6 rounded-lg">
+                <h2 class="text-xl font-bold mb-4">Лог активности</h2>
+                <div class="font-mono text-sm space-y-2" id="activity-log">
+                    <!-- Лог загружается через JS -->
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        feather.replace();
+        
+        const API_BASE = 'http://localhost:8000/api';
+        let authToken = localStorage.getItem('authToken');
+        let competitionEndTime = null;
+        
+        // Проверка авторизации
+        if (!authToken) {
+            window.location.href = 'lk.html';
+        }
+        
+        // Загрузка данных при старте
+        document.addEventListener('DOMContentLoaded', function() {
+            loadTeamData();
+            loadChallenges();
+            loadServices();
+            loadActivityLog();
+            startCountdown();
+        });
+        
+        // Обновление сервисов
+        document.getElementById('refresh-services').addEventListener('click', loadServices);
+        
+        // Отправка флага
+        document.getElementById('submit-flag').addEventListener('click', submitFlag);
+        
+        // Выход
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            localStorage.removeItem('authToken');
+            window.location.href = 'index.html';
+        });
+        
+        // Функции
+        async function loadTeamData() {
+            try {
+                const response = await fetch(`${API_BASE}/users/me/team`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const teamData = await response.json();
+                    document.getElementById('team-name').textContent = teamData.name;
+                    document.getElementById('team-score').textContent = teamData.score;
+                    
+                    // Загрузка рейтинга (нужен отдельный endpoint)
+                    document.getElementById('team-rank').textContent = '#1';
+                }
+            } catch (error) {
+                console.error('Error loading team data:', error);
+            }
+        }
+        
+        async function loadChallenges() {
+            try {
+                const response = await fetch(`${API_BASE}/challenges`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const challenges = await response.json();
+                    const select = document.getElementById('challenge-select');
+                    select.innerHTML = '<option value="">Выберите задание...</option>';
+                    
+                    challenges.forEach(challenge => {
+                        const option = document.createElement('option');
+                        option.value = challenge.id;
+                        option.textContent = `${challenge.category}-${challenge.points}: ${challenge.title}`;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading challenges:', error);
+            }
+        }
+        
+        async function loadServices() {
+            try {
+                const response = await fetch(`${API_BASE}/monitoring/services`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const services = await response.json();
+                    const container = document.getElementById('services-container');
+                    container.innerHTML = '';
+                    
+                    services.forEach(service => {
+                        const serviceCard = document.createElement('div');
+                        serviceCard.className = 'service-card bg-gray-900 p-4 rounded';
+                        
+                        const statusClass = service.status === 'online' ? 'service-online' : 'service-offline';
+                        const statusIcon = service.status === 'online' ? 'check-circle' : 'x-circle';
+                        
+                        serviceCard.innerHTML = `
+                            <div class="flex items-center justify-between mb-2">
+                                <h3 class="font-bold">${service.name}</h3>
+                                <div class="flex items-center ${statusClass}">
+                                    <i data-feather="${statusIcon}" class="w-4 h-4 mr-1"></i>
+                                    <span>${service.status === 'online' ? 'Online' : 'Offline'}</span>
+                                </div>
+                            </div>
+                            <p class="text-sm text-gray-400 mb-2">${service.type.toUpperCase()}</p>
+                            <p class="text-xs text-gray-500">Проверено: ${new Date(service.last_checked).toLocaleTimeString()}</p>
+                        `;
+                        
+                        container.appendChild(serviceCard);
+                    });
+                    
+                    feather.replace();
+                }
+            } catch (error) {
+                console.error('Error loading services:', error);
+            }
+        }
+        
+        async function submitFlag() {
+            const challengeSelect = document.getElementById('challenge-select');
+            const flagInput = document.getElementById('flag-input');
+            const resultDiv = document.getElementById('flag-result');
+            
+            const challengeId = challengeSelect.value;
+            const flag = flagInput.value.trim();
+            
+            if (!challengeId || !flag) {
+                showFlagResult('Выберите задание и введите флаг', 'error');
+                return;
+            }
+            
+            if (!flag.startsWith('CTF{') || !flag.endsWith('}')) {
+                showFlagResult('Неверный формат флага. Должен быть CTF{...}', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/submissions`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        challenge_id: parseInt(challengeId),
+                        flag: flag
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    const message = result.is_first_blood ? 
+                        `🎉 Первая кровь! ${result.message} +${result.points} очков` : 
+                        `${result.message} +${result.points} очков`;
+                    
+                    showFlagResult(message, 'success');
+                    flagInput.value = '';
+                    loadTeamData();
+                    loadActivityLog();
+                } else {
+                    showFlagResult(result.detail || 'Ошибка отправки', 'error');
+                }
+            } catch (error) {
+                showFlagResult('Ошибка соединения', 'error');
+            }
+        }
+        
+        function showFlagResult(message, type) {
+            const resultDiv = document.getElementById('flag-result');
+            resultDiv.textContent = message;
+            resultDiv.className = `mt-2 p-2 rounded ${
+                type === 'success' ? 'bg-green-600' : 'bg-red-600'
+            }`;
+            resultDiv.classList.remove('hidden');
+            
+            setTimeout(() => {
+                resultDiv.classList.add('hidden');
+            }, 5000);
+        }
+        
+        async function loadActivityLog() {
+            try {
+                const response = await fetch(`${API_BASE}/submissions/team?limit=10`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const submissions = await response.json();
+                    const logContainer = document.getElementById('activity-log');
+                    logContainer.innerHTML = '';
+                    
+                    submissions.forEach(submission => {
+                        const time = new Date(submission.submitted_at).toLocaleTimeString();
+                        const status = submission.status === 'accepted' ? 'принят' : 
+                                      submission.status === 'rejected' ? 'отклонен' : 'ожидание';
+                        const points = submission.points_awarded > 0 ? ` (+${submission.points_awarded})` : '';
+                        
+                        const logEntry = document.createElement('p');
+                        logEntry.innerHTML = `> [${time}] Флаг ${status}${points} ${submission.is_first_blood ? '🎉' : ''}`;
+                        logContainer.appendChild(logEntry);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading activity log:', error);
+            }
+        }
+        
+        function startCountdown() {
+            // Для демо - устанавливаем время окончания на 2 часа вперед
+            if (!competitionEndTime) {
+                competitionEndTime = new Date();
+                competitionEndTime.setHours(competitionEndTime.getHours() + 2);
+            }
+            
+            function update() {
+                const now = new Date();
+                const diff = competitionEndTime - now;
+                
+                if (diff <= 0) {
+                    document.getElementById('arena-countdown').textContent = '00:00:00';
+                    return;
+                }
+                
+                const hours = Math.floor(diff / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+                
+                document.getElementById('arena-countdown').textContent = 
+                    `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+            
+            update();
+            setInterval(update, 1000);
+        }
+        
+        // Автообновление каждые 30 секунд
+        setInterval(() => {
+            loadServices();
+            loadTeamData();
+            loadActivityLog();
+        }, 30000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CyberCTF Arena</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+        
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            background-color: #262626;
+            color: #FFFFFF;
+        }
+        
+        .hero-bg {
+            background-image: url('assets/logo.jpg');
+            background-size: cover;
+            background-position: center;
+            position: relative;
+        }
+        
+        .hero-bg::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+        }
+        
+        .glow-effect {
+            transition: all 0.3s ease;
+        }
+        
+        .glow-effect:hover {
+            box-shadow: 0 0 15px #EA000F;
+        }
+        
+        .code-block {
+            background-color: #1a1a1a;
+            border-left: 3px solid #EA000F;
+            padding: 1rem;
+            font-family: 'Share Tech Mono', monospace;
+            overflow-x: auto;
+        }
+        
+        .form-input {
+            background-color: #1a1a1a;
+            border: 1px solid #333;
+            color: #FFFFFF;
+            padding: 0.75rem;
+            width: 100%;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: #EA000F;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+        }
+        
+        .modal-content {
+            background-color: #1a1a1a;
+            margin: 5% auto;
+            padding: 2rem;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="sticky top-0 z-50 bg-black bg-opacity-80 backdrop-blur-md">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="text-xl font-bold">
+                <span class="text-white">Cyber</span><span class="text-red-600">CTF</span>
+            </div>
+            <nav class="hidden md:flex space-x-8">
+                <a href="#" class="text-white hover:text-red-500">Главная</a>
+                <a href="#contacts" class="text-white hover:text-red-500">Контакты</a>
+                <a href="lk.html" class="text-white hover:text-red-500">Вход</a>
+                <a href="admin.html" class="text-white hover:text-red-500">Администрирование</a>
+            </nav>
+            <button class="md:hidden text-white">
+                <i data-feather="menu"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero-bg relative">
+        <div class="container mx-auto px-4 py-32 relative z-10">
+            <div class="max-w-3xl">
+                <h1 class="text-4xl md:text-6xl font-bold mb-4">CTF CYBERSPACE BATTLE</h1>
+                <p class="text-xl md:text-2xl mb-8">Крупнейшие киберучения 2025. Взломай систему первым.</p>
+                <button id="register-btn" class="bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-md glow-effect">
+                    Зарегистрировать команду
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Модальное окно регистрации -->
+    <div id="register-modal" class="modal">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold">Регистрация команды</h3>
+                <button id="close-modal" class="text-gray-400 hover:text-white">
+                    <i data-feather="x"></i>
+                </button>
+            </div>
+            
+            <form id="register-form">
+                <div class="mb-4">
+                    <label class="block mb-2">Название команды *</label>
+                    <input type="text" name="team_name" class="form-input" required>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block mb-2">Логин капитана *</label>
+                    <input type="text" name="username" class="form-input" required>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block mb-2">Email капитана *</label>
+                    <input type="email" name="email" class="form-input" required>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block mb-2">Пароль *</label>
+                    <input type="password" name="password" class="form-input" required>
+                </div>
+                
+                <div class="mb-6">
+                    <label class="block mb-2">Подтверждение пароля *</label>
+                    <input type="password" name="password_confirm" class="form-input" required>
+                </div>
+                
+                <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-md">
+                    Зарегистрировать
+                </button>
+            </form>
+            
+            <div id="register-message" class="mt-4 hidden"></div>
+        </div>
+    </div>
+
+    <!-- Info Section -->
+    <section class="py-20">
+        <div class="container mx-auto px-4">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl font-bold mb-4">О СОРЕВНОВАНИИ</h2>
+                <div class="w-24 h-1 bg-red-600 mx-auto"></div>
+            </div>
+            
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <div class="text-red-500 mb-4">
+                        <i data-feather="shield" class="w-10 h-10"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Формат CTF</h3>
+                    <p>Соревнования в формате Attack-Defense, где каждая команда получает идентичную уязвимую систему для защиты и атаки.</p>
+                </div>
+                
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <div class="text-red-500 mb-4">
+                        <i data-feather="award" class="w-10 h-10"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Призы</h3>
+                    <p>Cтажировки в IT-компаниях и ценные подарки от спонсоров.</p>
+                </div>
+                
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <div class="text-red-500 mb-4">
+                        <i data-feather="clock" class="w-10 h-10"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Таймер</h3>
+                    <div class="text-2xl font-mono" id="countdown">
+                        05:23:12:45
+                    </div>
+                    <p>До начала соревнований</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Rules Section -->
+    <section class="py-20 bg-gray-900">
+        <div class="container mx-auto px-4">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl font-bold mb-4">ПРАВИЛА</h2>
+                <div class="w-24 h-1 bg-red-600 mx-auto"></div>
+            </div>
+            
+            <div class="max-w-4xl mx-auto">
+                <div class="mb-8">
+                    <h3 class="text-xl font-bold mb-3 text-red-500">1. Состав команд</h3>
+                    <p>Команды состоят из 3-5 участников. Допускаются как студенческие, так и профессиональные команды.</p>
+                </div>
+                
+                <div class="mb-8">
+                    <h3 class="text-xl font-bold mb-3 text-red-500">2. Флаги</h3>
+                    <p>Каждый флаг имеет формат CTF{...}. Флаги должны быть сданы через платформу в течение времени соревнований.</p>
+                </div>
+                
+                <div class="mb-8">
+                    <h3 class="text-xl font-bold mb-3 text-red-500">3. Запрещенные действия</h3>
+                    <p>Атаки на инфраструктуру соревнований, DoS-атаки, bruteforce и другие методы, нарушающие работу системы.</p>
+                </div>
+                
+                <div class="code-block">
+                    <p># Пример флага:</p>
+                    <p>CTF{Th1s_1s_4n_3x4mpl3_fl4g}</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contacts Section -->
+    <section class="py-20" id="contacts">
+        <div class="container mx-auto px-4">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl font-bold mb-4">КОНТАКТЫ</h2>
+                <div class="w-24 h-1 bg-red-600 mx-auto"></div>
+            </div>
+            
+            <div class="grid md:grid-cols-2 gap-12">
+                <div>
+                    <h3 class="text-xl font-bold mb-6">По всем вопросам обращайтесь:</h3>
+                    
+                    <div class="mb-6">
+                        <div class="flex items-center mb-4">
+                            <i data-feather="mail" class="w-6 h-6 mr-4 text-red-500"></i>
+                            <span>ctf@cyberarena.ru</span>
+                        </div>
+                        
+                        <div class="flex items-center mb-4">
+                            <i data-feather="phone" class="w-6 h-6 mr-4 text-red-500"></i>
+                            <span>+7 (XXX) XXX-XX-XX</span>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h4 class="font-bold mb-4">Мы в соцсетях:</h4>
+                        <div class="flex space-x-4">
+                            <a href="#" class="text-white hover:text-red-500">
+                                <i data-feather="send" class="w-6 h-6"></i>
+                            </a>
+                            <a href="#" class="text-white hover:text-red-500">
+                                <i data-feather="message-square" class="w-6 h-6"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <div class="h-64 bg-gray-800 rounded-lg flex items-center justify-center">
+                        <p>Здесь будет Яндекс.Карта</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-10 bg-black">
+        <div class="container mx-auto px-4 text-center">
+            <p>&copy; 2024 CyberCTF Arena. Все права защищены.</p>
+        </div>
+    </footer>
+
+    <script>
+        feather.replace();
+        
+        const API_BASE = 'http://localhost:8000/api';
+        
+        // Модальное окно регистрации
+        const registerBtn = document.getElementById('register-btn');
+        const registerModal = document.getElementById('register-modal');
+        const closeModal = document.getElementById('close-modal');
+        const registerForm = document.getElementById('register-form');
+        const registerMessage = document.getElementById('register-message');
+        
+        registerBtn.addEventListener('click', () => {
+            registerModal.style.display = 'block';
+        });
+        
+        closeModal.addEventListener('click', () => {
+            registerModal.style.display = 'none';
+        });
+        
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(registerForm);
+            const data = {
+                team_name: formData.get('team_name'),
+                username: formData.get('username'),
+                email: formData.get('email'),
+                password: formData.get('password'),
+                password_confirm: formData.get('password_confirm')
+            };
+            
+            if (data.password !== data.password_confirm) {
+                showMessage('Пароли не совпадают', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showMessage('Регистрация успешна! Проверьте вашу почту для подтверждения.', 'success');
+                    registerForm.reset();
+                    setTimeout(() => {
+                        registerModal.style.display = 'none';
+                        window.location.href = 'lk.html';
+                    }, 3000);
+                } else {
+                    showMessage(result.detail || 'Ошибка регистрации', 'error');
+                }
+            } catch (error) {
+                showMessage('Ошибка соединения', 'error');
+            }
+        });
+        
+        function showMessage(text, type) {
+            registerMessage.textContent = text;
+            registerMessage.className = `mt-4 p-2 rounded ${
+                type === 'success' ? 'bg-green-600' : 'bg-red-600'
+            }`;
+            registerMessage.classList.remove('hidden');
+        }
+        
+        // Simple countdown timer for demo
+		function updateCountdown() {
+			const targetDate = new Date('September 25, 2026 00:00:00').getTime();
+			const now = new Date().getTime();
+			const timeLeft = targetDate - now;
+			
+			if (timeLeft < 0) {
+				document.getElementById('countdown').textContent = 'Соревнования начались!';
+				return;
+			}
+			
+			const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+			const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+			const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+			const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+			
+			document.getElementById('countdown').textContent = 
+				`${days.toString().padStart(2, '0')}:${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+		}        
+        setInterval(updateCountdown, 1000);
+        updateCountdown();
+    </script>
+</body>
+</html>

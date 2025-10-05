@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CyberCTF Arena - Личный кабинет</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+        
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            background-color: #262626;
+            color: #FFFFFF;
+        }
+        
+        .form-input {
+            background-color: #1a1a1a;
+            border: 1px solid #333;
+            color: #FFFFFF;
+            padding: 0.75rem;
+            width: 100%;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: #EA000F;
+        }
+        
+        .table-style {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .table-style th, .table-style td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #333;
+        }
+        
+        .table-style th {
+            background-color: #1a1a1a;
+            color: #EA000F;
+        }
+        
+        .status-accepted {
+            color: #00FF00;
+        }
+        
+        .status-rejected {
+            color: #FF0000;
+        }
+        
+        .status-pending {
+            color: #FFA500;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+        }
+        
+        .modal-content {
+            background-color: #1a1a1a;
+            margin: 5% auto;
+            padding: 2rem;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="sticky top-0 z-50 bg-black bg-opacity-80 backdrop-blur-md">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="text-xl font-bold">
+                <span class="text-white">Cyber</span><span class="text-red-600">CTF</span>
+            </div>
+            <nav class="hidden md:flex space-x-8">
+                <a href="index.html" class="text-white hover:text-red-500">Главная</a>
+                <a href="admin.html" class="text-white hover:text-red-500">Администрирование</a>
+                <button id="logout-btn" class="text-white hover:text-red-500">Выйти</button>
+            </nav>
+            <button class="md:hidden text-white">
+                <i data-feather="menu"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Login Form -->
+    <section class="py-20" id="login-form">
+        <div class="container mx-auto px-4 max-w-md">
+            <div class="bg-gray-800 p-8 rounded-lg">
+                <h2 class="text-2xl font-bold mb-6 text-center">Вход в систему</h2>
+                
+                <form id="login-form-element">
+                    <div class="mb-4">
+                        <label class="block mb-2">Логин</label>
+                        <input type="text" id="username" class="form-input" placeholder="Введите ваш логин" required>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="block mb-2">Пароль</label>
+                        <input type="password" id="password" class="form-input" placeholder="Введите ваш пароль" required>
+                    </div>
+                    
+                    <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-md mb-4">
+                        Войти
+                    </button>
+                    
+                    <div class="text-center">
+                        <a href="#" id="forgot-password" class="text-red-500 hover:underline">Забыли пароль?</a>
+                    </div>
+                </form>
+                
+                <div id="login-message" class="mt-4 hidden"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Dashboard -->
+    <section class="py-10 hidden" id="dashboard">
+        <div class="container mx-auto px-4">
+            <div class="flex justify-between items-center mb-8">
+                <div>
+                    <h1 class="text-3xl font-bold">Личный кабинет</h1>
+                    <div class="mt-2">
+                        <h2 class="text-xl">Команда: <span class="text-red-500" id="team-name">-</span></h2>
+                        <p>Текущий рейтинг: <span class="text-red-500" id="team-rank">-</span></p>
+                        <p>Общий счет: <span class="text-red-500" id="team-score">0</span> очков</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <p id="user-info">Пользователь: <span id="username-display">-</span></p>
+                    <p id="user-role">Роль: <span id="role-display">-</span></p>
+                </div>
+            </div>
+            
+            <!-- Статистика -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                <div class="bg-gray-800 p-4 rounded">
+                    <h3 class="text-gray-400">Всего отправок</h3>
+                    <p class="text-2xl font-bold" id="total-submissions">0</p>
+                </div>
+                <div class="bg-gray-800 p-4 rounded">
+                    <h3 class="text-gray-400">Успешных</h3>
+                    <p class="text-2xl font-bold text-green-500" id="accepted-submissions">0</p>
+                </div>
+                <div class="bg-gray-800 p-4 rounded">
+                    <h3 class="text-gray-400">Неуспешных</h3>
+                    <p class="text-2xl font-bold text-red-500" id="rejected-submissions">0</p>
+                </div>
+                <div class="bg-gray-800 p-4 rounded">
+                    <h3 class="text-gray-400">Процент успеха</h3>
+                    <p class="text-2xl font-bold text-yellow-500" id="success-rate">0%</p>
+                </div>
+            </div>
+            
+            <!-- Состав команды -->
+            <div class="mb-8">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold">Состав команды</h2>
+                    <button id="invite-member" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm">
+                        Пригласить участника
+                    </button>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="table-style">
+                        <thead>
+                            <tr>
+                                <th>Логин</th>
+                                <th>Email</th>
+                                <th>Роль</th>
+                                <th>Статус</th>
+                            </tr>
+                        </thead>
+                        <tbody id="team-members">
+                            <!-- Данные загружаются через JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- История отправок -->
+            <div class="mb-8">
+                <h2 class="text-xl font-bold mb-4">Последние отправки</h2>
+                <div class="overflow-x-auto">
+                    <table class="table-style">
+                        <thead>
+                            <tr>
+                                <th>Время</th>
+                                <th>Задание</th>
+                                <th>Флаг</th>
+                                <th>Статус</th>
+                                <th>Очки</th>
+                            </tr>
+                        </thead>
+                        <tbody id="submissions-history">
+                            <!-- Данные загружаются через JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="text-center">
+                <a href="arena.html" class="inline-block bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-md">
+                    Перейти на арену
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Модальное окно приглашения -->
+    <div id="invite-modal" class="modal">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold">Пригласить участника</h3>
+                <button class="close-modal text-gray-400 hover:text-white">
+                    <i data-feather="x"></i>
+                </button>
+            </div>
+            
+            <form id="invite-form">
+                <div class="mb-4">
+                    <label class="block mb-2">Email участника</label>
+                    <input type="email" id="invite-email" class="form-input" required>
+                </div>
+                
+                <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-md">
+                    Отправить приглашение
+                </button>
+            </form>
+            
+            <div id="invite-message" class="mt-4 hidden"></div>
+        </div>
+    </div>
+
+    <script>
+        feather.replace();
+        
+        const API_BASE = 'http://localhost:8000/api';
+        let authToken = localStorage.getItem('authToken');
+        
+        // Проверка авторизации при загрузке
+        if (authToken) {
+            checkAuth();
+        }
+        
+        // Логин
+        document.getElementById('login-form-element').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    localStorage.setItem('authToken', result.access_token);
+                    localStorage.setItem('refreshToken', result.refresh_token);
+                    authToken = result.access_token;
+                    showDashboard();
+                    loadUserData();
+                } else {
+                    showLoginMessage(result.detail || 'Ошибка входа', 'error');
+                }
+            } catch (error) {
+                showLoginMessage('Ошибка соединения', 'error');
+            }
+        });
+        
+        // Выход
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('refreshToken');
+            authToken = null;
+            showLoginForm();
+        });
+        
+        // Приглашение участника
+        document.getElementById('invite-member').addEventListener('click', () => {
+            document.getElementById('invite-modal').style.display = 'block';
+        });
+        
+        document.querySelectorAll('.close-modal').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.getElementById('invite-modal').style.display = 'none';
+            });
+        });
+        
+        document.getElementById('invite-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('invite-email').value;
+            
+            try {
+                const response = await fetch(`${API_BASE}/teams/invites`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ email: email })
+                });
+                
+                if (response.ok) {
+                    showInviteMessage('Приглашение отправлено', 'success');
+                    document.getElementById('invite-form').reset();
+                } else {
+                    const result = await response.json();
+                    showInviteMessage(result.detail || 'Ошибка отправки приглашения', 'error');
+                }
+            } catch (error) {
+                showInviteMessage('Ошибка соединения', 'error');
+            }
+        });
+        
+        // Функции
+        async function checkAuth() {
+            try {
+                const response = await fetch(`${API_BASE}/users/me`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    showDashboard();
+                    loadUserData();
+                } else {
+                    showLoginForm();
+                }
+            } catch (error) {
+                showLoginForm();
+            }
+        }
+        
+        function showLoginForm() {
+            document.getElementById('login-form').classList.remove('hidden');
+            document.getElementById('dashboard').classList.add('hidden');
+        }
+        
+        function showDashboard() {
+            document.getElementById('login-form').classList.add('hidden');
+            document.getElementById('dashboard').classList.remove('hidden');
+        }
+        
+        async function loadUserData() {
+            try {
+                // Загрузка данных пользователя
+                const userResponse = await fetch(`${API_BASE}/users/me`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (userResponse.ok) {
+                    const userData = await userResponse.json();
+                    document.getElementById('username-display').textContent = userData.username;
+                    document.getElementById('role-display').textContent = userData.role;
+                }
+                
+                // Загрузка данных команды
+                const teamResponse = await fetch(`${API_BASE}/users/me/team`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (teamResponse.ok) {
+                    const teamData = await teamResponse.json();
+                    document.getElementById('team-name').textContent = teamData.name;
+                    document.getElementById('team-score').textContent = teamData.score;
+                    loadTeamMembers(teamData.id);
+                }
+                
+                // Загрузка статистики отправок
+                const statsResponse = await fetch(`${API_BASE}/submissions/stats`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (statsResponse.ok) {
+                    const stats = await statsResponse.json();
+                    document.getElementById('total-submissions').textContent = stats.total;
+                    document.getElementById('accepted-submissions').textContent = stats.accepted;
+                    document.getElementById('rejected-submissions').textContent = stats.rejected;
+                    document.getElementById('success-rate').textContent = `${stats.success_rate.toFixed(1)}%`;
+                }
+                
+                // Загрузка истории отправок
+                const submissionsResponse = await fetch(`${API_BASE}/submissions/team?limit=10`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (submissionsResponse.ok) {
+                    const submissions = await submissionsResponse.json();
+                    displaySubmissions(submissions);
+                }
+                
+            } catch (error) {
+                console.error('Error loading user data:', error);
+            }
+        }
+        
+        async function loadTeamMembers(teamId) {
+            try {
+                const response = await fetch(`${API_BASE}/teams/my`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const teamData = await response.json();
+                    const membersTbody = document.getElementById('team-members');
+                    membersTbody.innerHTML = '';
+                    
+                    teamData.members.forEach(member => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${member.username}</td>
+                            <td>${member.email}</td>
+                            <td>${member.role === 'captain' ? 'Капитан' : 'Участник'}</td>
+                            <td>${member.is_active ? 'Активен' : 'Неактивен'}</td>
+                        `;
+                        membersTbody.appendChild(row);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading team members:', error);
+            }
+        }
+        
+        function displaySubmissions(submissions) {
+            const tbody = document.getElementById('submissions-history');
+            tbody.innerHTML = '';
+            
+            submissions.forEach(submission => {
+                const row = document.createElement('tr');
+                const date = new Date(submission.submitted_at).toLocaleTimeString();
+                const statusClass = `status-${submission.status}`;
+                
+                row.innerHTML = `
+                    <td>${date}</td>
+                    <td>${submission.challenge_title || 'Unknown'}</td>
+                    <td>${submission.flag.substring(0, 10)}...</td>
+                    <td class="${statusClass}">${getStatusText(submission.status)}</td>
+                    <td>${submission.points_awarded || 0}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+        
+        function getStatusText(status) {
+            const statusMap = {
+                'accepted': 'Принято',
+                'rejected': 'Отклонено',
+                'pending': 'Ожидание'
+            };
+            return statusMap[status] || status;
+        }
+        
+        function showLoginMessage(text, type) {
+            const messageDiv = document.getElementById('login-message');
+            messageDiv.textContent = text;
+            messageDiv.className = `mt-4 p-2 rounded ${
+                type === 'success' ? 'bg-green-600' : 'bg-red-600'
+            }`;
+            messageDiv.classList.remove('hidden');
+        }
+        
+        function showInviteMessage(text, type) {
+            const messageDiv = document.getElementById('invite-message');
+            messageDiv.textContent = text;
+            messageDiv.className = `mt-4 p-2 rounded ${
+                type === 'success' ? 'bg-green-600' : 'bg-red-600'
+            }`;
+            messageDiv.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
