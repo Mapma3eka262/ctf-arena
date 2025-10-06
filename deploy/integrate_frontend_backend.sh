@@ -28,6 +28,18 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+# Detect OS
+detect_os() {
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        OS=$NAME
+        OS_ID=$ID
+    else
+        log_error "Cannot detect OS"
+        exit 1
+    fi
+}
+
 # Check if running as cyberctf user
 check_user() {
     if [ "$(whoami)" != "cyberctf" ]; then
@@ -233,20 +245,11 @@ build_frontend() {
     log_info "Frontend build completed"
 }
 
-# Configure nginx
-setup_nginx() {
-    log_info "Configuring nginx..."
-
-    sudo mkdir /etc/nginx/sites-available
-    sudo mkdir /etc/nginx/sites-enabled
-    sudo touch /etc/nginx/sites-available/cyberctf
-
-    sudo chmod 755 /etc/nginx/sites-available
-    sudo chmod 755 /etc/nginx/sites-enabled
-    sudo chmod 755 /etc/nginx/sites-available/cyberctf
-
-    sudo chown cyberctf:cyberctf /etc/nginx/sites-available/cyberctf
-    # Create nginx configuration
+# Configure nginx for Ubuntu
+setup_nginx_ubuntu() {
+    log_info "Configuring nginx for Ubuntu..."
+    
+    # Create nginx configuration in sites-available
     sudo bash -c "cat > /etc/nginx/sites-available/cyberctf << EOF
 server {
     listen 80;
@@ -281,15 +284,126 @@ server {
 }
 EOF"
     
-    # Enable site
-    if [ -d "/etc/nginx/sites-enabled" ]; then
-        sudo ln -sf /etc/nginx/sites-available/cyberctf /etc/nginx/sites-enabled/
+    # Enable site by creating symlink in sites-enabled
+    sudo ln -sf /etc/nginx/sites-available/cyberctf /etc/nginx/sites-enabled/
+    
+    # Remove default site if exists
+    if [ -f "/etc/nginx/sites-enabled/default" ]; then
+        sudo rm /etc/nginx/sites-enabled/default
     fi
     
-    # Test and reload nginx
-    sudo nginx -t && sudo systemctl reload nginx
+    log_info "Nginx configuration for Ubuntu completed"
+}
+
+# Configure nginx for CentOS
+setup_nginx_centos() {
+    log_info "Configuring nginx for CentOS..."
     
-    log_info "Nginx configuration completed"
+    # Create nginx configuration in conf.d directory
+    sudo bash -c "cat > /etc/nginx/conf.d/cyberctf.conf << EOF
+server {
+    listen 80;
+    server_name _;
+    
+    # Frontend static files
+    location / {
+        root $FRONTEND_DIR;
+        try_files \\$uri \\$uri/ /index.html;
+        index index.html;
+    }
+    
+    # API proxy
+    location /api/ {
+        proxy_pass http://localhost:8000;
+        proxy_set_header Host \\$host;
+        proxy_set_header X-Real-IP \\$remote_addr;
+        proxy_set_header X-Forwarded-For \\$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \\$scheme;
+    }
+    
+    # Health check
+    location /health {
+        proxy_pass http://localhost:8000/health;
+        proxy_set_header Host \\$host;
+    }
+    
+    # Static files for backend
+    location /static/ {
+        alias $BACKEND_DIR/static/;
+    }
+}
+EOF"
+    
+    # Backup default nginx.conf and create custom one
+    if [ -f "/etc/nginx/nginx.conf" ]; then
+        sudo cp /etc/nginx/nginx.conf /etc/nginx/nginx.conf.backup
+    fi
+    
+    # Create custom nginx.conf for CentOS
+    sudo bash -c "cat > /etc/nginx/nginx.conf << 'EOF'
+user nginx;
+worker_processes auto;
+error_log /var/log/nginx/error.log;
+pid /run/nginx.pid;
+
+include /usr/share/nginx/modules/*.conf;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    log_format  main  '\$remote_addr - \$remote_user [\$time_local] \"\$request\" '
+                      '\$status \$body_bytes_sent \"\$http_referer\" '
+                      '\"\$http_user_agent\" \"\$http_x_forwarded_for\"';
+
+    access_log  /var/log/nginx/access.log  main;
+
+    sendfile            on;
+    tcp_nopush          on;
+    tcp_nodelay         on;
+    keepalive_timeout   65;
+    types_hash_max_size 2048;
+
+    include             /etc/nginx/mime.types;
+    default_type        application/octet-stream;
+
+    include /etc/nginx/conf.d/*.conf;
+}
+EOF"
+    
+    log_info "Nginx configuration for CentOS completed"
+}
+
+# Configure nginx based on OS
+setup_nginx() {
+    log_info "Configuring nginx for $OS..."
+    
+    detect_os
+    
+    case $OS_ID in
+        ubuntu)
+            setup_nginx_ubuntu
+            ;;
+        centos|rhel)
+            setup_nginx_centos
+            ;;
+        *)
+            log_error "Unsupported OS for nginx configuration: $OS"
+            log_info "Please configure nginx manually"
+            return 1
+            ;;
+    esac
+    
+    # Test nginx configuration
+    if sudo nginx -t; then
+        sudo systemctl reload nginx
+        sudo systemctl enable nginx
+        log_info "Nginx configuration test passed and reloaded"
+    else
+        log_error "Nginx configuration test failed"
+        return 1
+    fi
 }
 
 # Create systemd services
@@ -366,9 +480,98 @@ EOF"
     log_info "Systemd services created"
 }
 
+# Start services
+start_services() {
+    log_info "Starting services..."
+    
+    # Start backend services
+    sudo systemctl start cyberctf-backend
+    sudo systemctl start cyberctf-celery
+    sudo systemctl start cyberctf-celerybeat
+    
+    # Wait a bit for services to start
+    sleep 3
+    
+    # Check service status
+    log_info "Service status:"
+    if sudo systemctl is-active cyberctf-backend >/dev/null; then
+        log_info "Backend service: ACTIVE"
+    else
+        log_error "Backend service: FAILED"
+        sudo systemctl status cyberctf-backend --no-pager
+    fi
+    
+    if sudo systemctl is-active cyberctf-celery >/dev/null; then
+        log_info "Celery worker service: ACTIVE"
+    else
+        log_error "Celery worker service: FAILED"
+        sudo systemctl status cyberctf-celery --no-pager
+    fi
+    
+    if sudo systemctl is-active cyberctf-celerybeat >/dev/null; then
+        log_info "Celery beat service: ACTIVE"
+    else
+        log_error "Celery beat service: FAILED"
+        sudo systemctl status cyberctf-celerybeat --no-pager
+    fi
+}
+
+# Health check
+health_check() {
+    log_info "Performing health check..."
+    
+    sleep 5
+    
+    local health_checks_passed=0
+    local total_checks=3
+    
+    # Check backend health
+    if curl -f http://localhost:8000/health >/dev/null 2>&1; then
+        log_info "✓ Backend health check: PASSED"
+        ((health_checks_passed++))
+    else
+        log_error "✗ Backend health check: FAILED"
+    fi
+    
+    # Check nginx
+    if curl -f http://localhost >/dev/null 2>&1; then
+        log_info "✓ Nginx health check: PASSED"
+        ((health_checks_passed++))
+    else
+        log_error "✗ Nginx health check: FAILED"
+    fi
+    
+    # Check database connection
+    cd $BACKEND_DIR
+    source $VENV_DIR/bin/activate
+    if python -c "
+from app.core.database import SessionLocal
+db = SessionLocal()
+db.execute('SELECT 1')
+db.close()
+print('Database connection: OK')
+" 2>/dev/null; then
+        log_info "✓ Database connection: PASSED"
+        ((health_checks_passed++))
+    else
+        log_error "✗ Database connection: FAILED"
+    fi
+    
+    if [ $health_checks_passed -eq $total_checks ]; then
+        log_info "🎉 All health checks passed! System is ready."
+        return 0
+    else
+        log_warn "Only $health_checks_passed out of $total_checks health checks passed"
+        return 1
+    fi
+}
+
 # Main execution
 main() {
     log_info "Starting backend-frontend integration..."
+    
+    detect_os
+    log_info "Detected OS: $OS"
     
     check_user
     
@@ -385,13 +588,26 @@ main() {
     build_frontend
     setup_nginx
     create_services
+    start_services
+    health_check
     
     log_info "Backend-frontend integration completed!"
-    log_info "Next steps:"
-    log_info "1. Start services: sudo systemctl start cyberctf-backend cyberctf-celery cyberctf-celerybeat"
-    log_info "2. Check status: sudo systemctl status cyberctf-backend"
-    log_info "3. Access application at: http://your-server-ip"
-    log_info "4. Admin credentials: username=admin, password=admin123"
+    log_info ""
+    log_info "📋 Next steps:"
+    log_info "   1. Access application at: http://$(curl -s ifconfig.me 2>/dev/null || echo 'your-server-ip')"
+    log_info "   2. Admin credentials: username=admin, password=admin123"
+    log_info "   3. Check service status: sudo systemctl status cyberctf-backend"
+    log_info "   4. View logs: sudo journalctl -u cyberctf-backend -f"
+    log_info ""
+    log_info "🔧 Management commands:"
+    log_info "   Start: sudo systemctl start cyberctf-backend cyberctf-celery cyberctf-celerybeat"
+    log_info "   Stop: sudo systemctl stop cyberctf-backend cyberctf-celery cyberctf-celerybeat"
+    log_info "   Restart: sudo systemctl restart cyberctf-backend cyberctf-celery cyberctf-celerybeat"
+    log_info ""
+    log_info "⚠️  Important: Don't forget to:"
+    log_info "   - Change default admin password"
+    log_info "   - Configure email settings in $BACKEND_DIR/.env"
+    log_info "   - Set up SSL certificate for production"
 }
 
 # Run main function
