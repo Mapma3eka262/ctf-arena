@@ -390,7 +390,7 @@ main() {
     
     # Run integration script
     log_info "Running integration..."
-    bash $(dirname "$0")/integrate_frontend_backend.sh
+    bash $PROJECT_DIR/deploy/integrate_frontend_backend.sh
     
     run_migrations
     start_services
