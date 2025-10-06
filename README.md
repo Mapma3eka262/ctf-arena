@@ -126,7 +126,7 @@ cyberctf-arena/
 
 ```bash
 # Скачайте скрипт установки
-wget https://raw.githubusercontent.com/your-username/cyberctf-arena/main/deploy/quick_install.sh
+wget https://raw.githubusercontent.com/Mapma3eka262/cyberctf-arena/main/deploy/quick_install.sh
 
 # Запустите установку
 chmod +x quick_install.sh
@@ -154,7 +154,7 @@ sudo -u cyberctf ./integrate_frontend_backend.sh
 ### Docker установка
 ```bash
 # Клонируйте репозиторий
-git clone https://github.com/your-username/cyberctf-arena.git
+git clone https://github.com/Mapma3eka262/cyberctf-arena.git
 cd cyberctf-arena
 
 # Запустите через Docker Compose
@@ -170,7 +170,7 @@ docker-compose up -d
 ### Основные настройки (.env)
 ```ini
 # База данных
-DATABASE_URL=postgresql://cyberctf:cyberctf2024@localhost:5432/cyberctf
+DATABASE_URL=postgresql://cyberctf:cyberctf2025@localhost:5432/cyberctf
 
 # Redis
 REDIS_URL=redis://localhost:6379/0
