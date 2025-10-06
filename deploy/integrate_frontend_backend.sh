@@ -34,6 +34,7 @@ detect_os() {
         . /etc/os-release
         OS=$NAME
         OS_ID=$ID
+        OS_VERSION=$VERSION_ID
     else
         log_error "Cannot detect OS"
         exit 1
@@ -58,15 +59,18 @@ create_structure() {
     mkdir -p $FRONTEND_DIR
     mkdir -p $BACKEND_DIR/migrations/versions
     mkdir -p $BACKEND_DIR/logs
+    mkdir -p $BACKEND_DIR/static
     
     log_info "Project structure created"
 }
 
 # Setup Python virtual environment
 setup_python_env() {
-log_info "Setting up Python virtual environment..."
+    log_info "Setting up Python virtual environment..."
     
     cd $BACKEND_DIR
+    
+    detect_os
     
     # Проверяем, существует ли виртуальная среда и работает ли
     if [ -d "$VENV_DIR" ]; then
@@ -93,38 +97,52 @@ log_info "Setting up Python virtual environment..."
     
     # Обновляем pip
     log_info "Upgrading pip..."
-    pip install --upgrade pip
+    python3 -m pip install --upgrade pip
     
-    # Устанавливаем зависимости
-    log_info "Installing Python dependencies..."
-    
-    # Создаем временный requirements.txt если его нет
-    if [ ! -f "$BACKEND_DIR/requirements.txt" ]; then
-        log_warn "requirements.txt not found, creating temporary one..."
-        cat > $BACKEND_DIR/requirements.txt << 'EOF'
-fastapi==0.104.1
-uvicorn==0.24.0
-sqlalchemy==2.0.23
-psycopg2-binary==2.9.9
-alembic==1.12.1
-python-jose[cryptography]==3.3.0
-passlib[bcrypt]==1.7.4
-python-multipart==0.0.6
-redis==5.0.1
-celery==5.3.4
-python-telegram-bot==20.7
-pydantic==2.5.0
-pydantic-settings==2.1.0
-email-validator==2.1.0
-python-i18n==0.3.9
-httpx==0.25.2
-aiofiles==23.2.1
-python-dateutil==2.8.2
-EOF
+    # Устанавливаем зависимости в зависимости от ОС
+    if [ "$OS_ID" == "centos" ] || [ "$OS_ID" == "rhel" ]; then
+        log_info "Installing CentOS-compatible dependencies..."
+        python3 -m pip install \
+            redis==4.5.0 \
+            python-dateutil==2.8.2 \
+            httpx==0.24.0 \
+            aiofiles==22.1.0 \
+            python-i18n==0.3.9 \
+            email-validator==1.3.1 \
+            pydantic==1.10.2 \
+            pydantic-settings==2.0.3 \
+            fastapi==0.95.2 \
+            uvicorn==0.21.1 \
+            python-multipart==0.0.6 \
+            passlib[bcrypt]==1.7.4 \
+            python-jose[cryptography]==3.3.0 \
+            sqlalchemy==1.4.46 \
+            alembic==1.10.2 \
+            celery==5.2.7 \
+            python-telegram-bot==20.3 \
+            psycopg2-binary==2.9.6
+    else
+        log_info "Installing Ubuntu-compatible dependencies..."
+        python3 -m pip install \
+            redis==5.0.1 \
+            python-dateutil==2.8.2 \
+            httpx==0.25.2 \
+            aiofiles==23.2.1 \
+            python-i18n==0.3.9 \
+            email-validator==2.1.0 \
+            pydantic==2.5.0 \
+            pydantic-settings==2.1.0 \
+            fastapi==0.104.1 \
+            uvicorn==0.24.0 \
+            python-multipart==0.0.6 \
+            passlib[bcrypt]==1.7.4 \
+            python-jose[cryptography]==3.3.0 \
+            sqlalchemy==2.0.23 \
+            alembic==1.12.1 \
+            celery==5.3.4 \
+            python-telegram-bot==20.7 \
+            psycopg2-binary==2.9.9
     fi
-    
-    # Устанавливаем зависимости
-    pip install -r requirements.txt
     
     # Проверяем ключевые зависимости
     log_info "Verifying key dependencies..."
@@ -133,9 +151,8 @@ EOF
         if python -c "import $dep" 2>/dev/null; then
             log_info "✓ $dep: OK"
         else
-            log_error "✗ $dep: FAILED - trying alternative installation..."
-            # Пробуем установить отдельно
-            pip install $dep
+            log_error "✗ $dep: FAILED"
+            return 1
         fi
     done
     
@@ -145,6 +162,9 @@ EOF
 # Configure environment variables
 setup_environment() {
     log_info "Configuring environment variables..."
+    
+    # Get server IP
+    SERVER_IP=$(curl -s ifconfig.me || hostname -I | awk '{print $1}')
     
     cat > $BACKEND_DIR/.env << EOF
 # Database
@@ -171,7 +191,7 @@ TELEGRAM_BOT_TOKEN=your-telegram-bot-token
 TELEGRAM_ADMIN_CHAT_ID=your-chat-id
 
 # Application
-FRONTEND_URL=http://localhost:3000
+FRONTEND_URL=http://${SERVER_IP}
 INVITATION_EXPIRE_HOURS=24
 
 # Monitoring
@@ -224,34 +244,39 @@ from app.core.security import get_password_hash
 
 db = SessionLocal()
 
-# Create admin team if not exists
-admin_team = db.query(Team).filter(Team.name == 'Administrators').first()
-if not admin_team:
-    admin_team = Team(name='Administrators', score=0, is_active=True)
-    db.add(admin_team)
-    db.flush()
+try:
+    # Create admin team if not exists
+    admin_team = db.query(Team).filter(Team.name == 'Administrators').first()
+    if not admin_team:
+        admin_team = Team(name='Administrators', score=0, is_active=True)
+        db.add(admin_team)
+        db.flush()
 
-# Create admin user if not exists
-admin_user = db.query(User).filter(User.username == 'admin').first()
-if not admin_user:
-    admin_user = User(
-        username='admin',
-        email='admin@cyberctf.ru',
-        password_hash=get_password_hash('admin123'),
-        role='admin',
-        team_id=admin_team.id,
-        is_active=True,
-        email_verified=True
-    )
-    db.add(admin_user)
-    db.flush()
-    
-    # Set admin as team captain
-    admin_team.captain_id = admin_user.id
+    # Create admin user if not exists
+    admin_user = db.query(User).filter(User.username == 'admin').first()
+    if not admin_user:
+        admin_user = User(
+            username='admin',
+            email='admin@cyberctf.ru',
+            password_hash=get_password_hash('admin123'),
+            role='admin',
+            team_id=admin_team.id,
+            is_active=True,
+            email_verified=True
+        )
+        db.add(admin_user)
+        db.flush()
+        
+        # Set admin as team captain
+        admin_team.captain_id = admin_user.id
 
-db.commit()
-db.close()
-print('Admin user created: username=admin, password=admin123')
+    db.commit()
+    print('Admin user created: username=admin, password=admin123')
+except Exception as e:
+    print(f'Error creating admin user: {e}')
+    db.rollback()
+finally:
+    db.close()
 "
     
     log_info "Database setup completed"
@@ -266,15 +291,55 @@ build_frontend() {
     # Check if package.json exists (for React/Vue projects)
     if [ -f "package.json" ]; then
         log_info "Installing frontend dependencies..."
-        npm install
+        npm install || {
+            log_warn "npm install failed, trying with --force"
+            npm install --force
+        }
         
         log_info "Building frontend..."
-        npm run build
+        npm run build || {
+            log_error "Frontend build failed"
+            return 1
+        }
     else
         log_info "Using static HTML frontend"
         # Ensure frontend files are in place
         if [ ! -f "index.html" ]; then
             log_warn "No frontend files found. Please place HTML files in $FRONTEND_DIR"
+            # Create basic index.html if missing
+            cat > index.html << 'EOF'
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CyberCTF Arena</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background: #1a1a1a; 
+            color: white; 
+        }
+        .container { 
+            max-width: 800px; 
+            margin: 0 auto; 
+            text-align: center; 
+        }
+        h1 { color: #e00; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>CyberCTF Arena</h1>
+        <p>Backend is running. Frontend files need to be deployed.</p>
+        <p><a href="/lk.html" style="color: #e00;">Login</a> | <a href="/admin.html" style="color: #e00;">Admin</a></p>
+    </div>
+</body>
+</html>
+EOF
+            log_info "Created basic index.html"
         fi
     fi
     
@@ -305,17 +370,25 @@ server {
         proxy_set_header X-Real-IP \\$remote_addr;
         proxy_set_header X-Forwarded-For \\$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \\$scheme;
+        
+        # Timeouts
+        proxy_connect_timeout 30s;
+        proxy_send_timeout 30s;
+        proxy_read_timeout 30s;
     }
     
     # Health check
     location /health {
         proxy_pass http://localhost:8000/health;
         proxy_set_header Host \\$host;
+        access_log off;
     }
     
     # Static files for backend
     location /static/ {
         alias $BACKEND_DIR/static/;
+        expires 1y;
+        add_header Cache-Control \"public, immutable\";
     }
 }
 EOF"
@@ -355,58 +428,33 @@ server {
         proxy_set_header X-Real-IP \\$remote_addr;
         proxy_set_header X-Forwarded-For \\$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \\$scheme;
+        
+        # Timeouts
+        proxy_connect_timeout 30s;
+        proxy_send_timeout 30s;
+        proxy_read_timeout 30s;
     }
     
     # Health check
     location /health {
         proxy_pass http://localhost:8000/health;
         proxy_set_header Host \\$host;
+        access_log off;
     }
     
     # Static files for backend
     location /static/ {
         alias $BACKEND_DIR/static/;
+        expires 1y;
+        add_header Cache-Control \"public, immutable\";
     }
 }
 EOF"
     
-    # Backup default nginx.conf and create custom one
+    # Backup default nginx.conf and create custom one if needed
     if [ -f "/etc/nginx/nginx.conf" ]; then
         sudo cp /etc/nginx/nginx.conf /etc/nginx/nginx.conf.backup
     fi
-    
-    # Create custom nginx.conf for CentOS
-    sudo bash -c "cat > /etc/nginx/nginx.conf << 'EOF'
-user nginx;
-worker_processes auto;
-error_log /var/log/nginx/error.log;
-pid /run/nginx.pid;
-
-include /usr/share/nginx/modules/*.conf;
-
-events {
-    worker_connections 1024;
-}
-
-http {
-    log_format  main  '\$remote_addr - \$remote_user [\$time_local] \"\$request\" '
-                      '\$status \$body_bytes_sent \"\$http_referer\" '
-                      '\"\$http_user_agent\" \"\$http_x_forwarded_for\"';
-
-    access_log  /var/log/nginx/access.log  main;
-
-    sendfile            on;
-    tcp_nopush          on;
-    tcp_nodelay         on;
-    keepalive_timeout   65;
-    types_hash_max_size 2048;
-
-    include             /etc/nginx/mime.types;
-    default_type        application/octet-stream;
-
-    include /etc/nginx/conf.d/*.conf;
-}
-EOF"
     
     log_info "Nginx configuration for CentOS completed"
 }
@@ -526,37 +574,40 @@ start_services() {
     sudo systemctl start cyberctf-celerybeat
     
     # Wait a bit for services to start
-    sleep 3
+    sleep 5
     
     # Check service status
     log_info "Service status:"
     if sudo systemctl is-active cyberctf-backend >/dev/null; then
-        log_info "Backend service: ACTIVE"
+        log_info "✓ Backend service: ACTIVE"
     else
-        log_error "Backend service: FAILED"
+        log_error "✗ Backend service: FAILED"
         sudo systemctl status cyberctf-backend --no-pager
+        return 1
     fi
     
     if sudo systemctl is-active cyberctf-celery >/dev/null; then
-        log_info "Celery worker service: ACTIVE"
+        log_info "✓ Celery worker service: ACTIVE"
     else
-        log_error "Celery worker service: FAILED"
+        log_error "✗ Celery worker service: FAILED"
         sudo systemctl status cyberctf-celery --no-pager
     fi
     
     if sudo systemctl is-active cyberctf-celerybeat >/dev/null; then
-        log_info "Celery beat service: ACTIVE"
+        log_info "✓ Celery beat service: ACTIVE"
     else
-        log_error "Celery beat service: FAILED"
+        log_error "✗ Celery beat service: FAILED"
         sudo systemctl status cyberctf-celerybeat --no-pager
     fi
+    
+    return 0
 }
 
 # Health check
 health_check() {
     log_info "Performing health check..."
     
-    sleep 5
+    sleep 10
     
     local health_checks_passed=0
     local total_checks=3
@@ -567,6 +618,8 @@ health_check() {
         ((health_checks_passed++))
     else
         log_error "✗ Backend health check: FAILED"
+        log_info "Trying to get more details..."
+        curl -v http://localhost:8000/health || true
     fi
     
     # Check nginx
@@ -581,11 +634,17 @@ health_check() {
     cd $BACKEND_DIR
     source $VENV_DIR/bin/activate
     if python -c "
+import sys
+sys.path.append('$BACKEND_DIR')
 from app.core.database import SessionLocal
-db = SessionLocal()
-db.execute('SELECT 1')
-db.close()
-print('Database connection: OK')
+try:
+    db = SessionLocal()
+    db.execute('SELECT 1')
+    db.close()
+    print('Database connection: OK')
+except Exception as e:
+    print(f'Database connection failed: {e}')
+    sys.exit(1)
 " 2>/dev/null; then
         log_info "✓ Database connection: PASSED"
         ((health_checks_passed++))
@@ -602,12 +661,151 @@ print('Database connection: OK')
     fi
 }
 
+# Create management script
+create_management_script() {
+    log_info "Creating management script..."
+    
+    cat > $PROJECT_DIR/manage.sh << 'EOF'
+#!/bin/bash
+
+# CyberCTF Arena Management Script
+
+PROJECT_DIR="/home/cyberctf/cyberctf-arena"
+BACKEND_DIR="$PROJECT_DIR/backend"
+
+case "$1" in
+    start)
+        sudo systemctl start cyberctf-backend cyberctf-celery cyberctf-celerybeat
+        echo "Services started"
+        ;;
+    stop)
+        sudo systemctl stop cyberctf-backend cyberctf-celery cyberctf-celerybeat
+        echo "Services stopped"
+        ;;
+    restart)
+        sudo systemctl restart cyberctf-backend cyberctf-celery cyberctf-celerybeat
+        echo "Services restarted"
+        ;;
+    status)
+        echo "=== Service Status ==="
+        sudo systemctl status cyberctf-backend --no-pager
+        echo ""
+        sudo systemctl status cyberctf-celery --no-pager
+        echo ""
+        sudo systemctl status cyberctf-celerybeat --no-pager
+        ;;
+    logs)
+        sudo journalctl -u cyberctf-backend -f
+        ;;
+    celery-logs)
+        sudo journalctl -u cyberctf-celery -f
+        ;;
+    nginx-logs)
+        sudo tail -f /var/log/nginx/access.log
+        ;;
+    nginx-error-logs)
+        sudo tail -f /var/log/nginx/error.log
+        ;;
+    backup)
+        timestamp=$(date +%Y%m%d_%H%M%S)
+        backup_file="/home/cyberctf/backups/cyberctf_${timestamp}.backup"
+        mkdir -p /home/cyberctf/backups
+        sudo -u postgres pg_dump cyberctf > $backup_file
+        echo "Backup created: $backup_file"
+        ;;
+    update)
+        cd $PROJECT_DIR
+        git pull
+        cd backend
+        source venv/bin/activate
+        alembic upgrade head
+        sudo systemctl restart cyberctf-backend cyberctf-celery cyberctf-celerybeat
+        echo "Application updated"
+        ;;
+    shell)
+        cd $BACKEND_DIR
+        source venv/bin/activate
+        python -c "
+from app.core.database import SessionLocal
+from app.models import User, Team, Challenge
+db = SessionLocal()
+print('Database shell ready. Available objects: db, User, Team, Challenge')
+print('Example: users = db.query(User).all()')
+"
+        ;;
+    health)
+        curl -f http://localhost:8000/health && echo "Backend: HEALTHY" || echo "Backend: UNHEALTHY"
+        curl -f http://localhost && echo "Nginx: HEALTHY" || echo "Nginx: UNHEALTHY"
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|status|logs|celery-logs|nginx-logs|nginx-error-logs|backup|update|shell|health}"
+        echo ""
+        echo "Commands:"
+        echo "  start     - Start all services"
+        echo "  stop      - Stop all services"
+        echo "  restart   - Restart all services"
+        echo "  status    - Show detailed service status"
+        echo "  logs      - Show backend logs (follow)"
+        echo "  celery-logs - Show celery logs (follow)"
+        echo "  nginx-logs - Show nginx access logs (follow)"
+        echo "  nginx-error-logs - Show nginx error logs (follow)"
+        echo "  backup    - Create database backup"
+        echo "  update    - Update application"
+        echo "  shell     - Open database shell"
+        echo "  health    - Quick health check"
+        exit 1
+        ;;
+esac
+EOF
+    
+    chmod +x $PROJECT_DIR/manage.sh
+    log_info "Management script created: $PROJECT_DIR/manage.sh"
+}
+
+# Display final information
+display_info() {
+    log_info "=== CyberCTF Arena Integration Complete ==="
+    echo ""
+    SERVER_IP=$(curl -s ifconfig.me || hostname -I | awk '{print $1}')
+    echo "🌐 Application URLs:"
+    echo "   Main Site:    http://${SERVER_IP}"
+    echo "   Login:        http://${SERVER_IP}/lk.html"
+    echo "   Arena:        http://${SERVER_IP}/arena.html"
+    echo "   Admin Panel:  http://${SERVER_IP}/admin.html"
+    echo "   API Docs:     http://${SERVER_IP}/docs"
+    echo ""
+    echo "🔑 Default Admin Credentials:"
+    echo "   Username: admin"
+    echo "   Password: admin123"
+    echo "   Email:    admin@cyberctf.ru"
+    echo ""
+    echo "⚙️  Management Commands:"
+    echo "   cd $PROJECT_DIR"
+    echo "   ./manage.sh status    # Check service status"
+    echo "   ./manage.sh logs      # View backend logs"
+    echo "   ./manage.sh health    # Quick health check"
+    echo ""
+    echo "📊 Service Status:"
+    sudo systemctl is-active cyberctf-backend >/dev/null && echo "   Backend:   ✅ Running" || echo "   Backend:   ❌ Stopped"
+    sudo systemctl is-active cyberctf-celery >/dev/null && echo "   Celery:    ✅ Running" || echo "   Celery:    ❌ Stopped"
+    sudo systemctl is-active nginx >/dev/null && echo "   Nginx:     ✅ Running" || echo "   Nginx:     ❌ Stopped"
+    sudo systemctl is-active postgresql >/dev/null && echo "   PostgreSQL:✅ Running" || echo "   PostgreSQL:❌ Stopped"
+    sudo systemctl is-active redis >/dev/null 2>/dev/null && echo "   Redis:     ✅ Running" || sudo systemctl is-active redis-server >/dev/null && echo "   Redis:     ✅ Running" || echo "   Redis:     ❌ Stopped"
+    echo ""
+    echo "🚨 Important Next Steps:"
+    echo "   1. Change default admin password"
+    echo "   2. Configure email settings in $BACKEND_DIR/.env"
+    echo "   3. Set up SSL certificate for production"
+    echo "   4. Configure backup strategy"
+    echo ""
+}
+
 # Main execution
 main() {
     log_info "Starting backend-frontend integration..."
     
     detect_os
-    log_info "Detected OS: $OS"
+    log_info "Detected OS: $OS $OS_VERSION"
     
     check_user
     
@@ -618,32 +816,30 @@ main() {
         exit 1
     fi
     
-    setup_python_env
+    # Create basic structure if missing
+    create_structure
+    
+    setup_python_env || {
+        log_error "Python environment setup failed"
+        exit 1
+    }
+    
     setup_environment
     setup_database
     build_frontend
     setup_nginx
     create_services
-    start_services
+    start_services || {
+        log_error "Failed to start services"
+        exit 1
+    }
     health_check
+    create_management_script
+    display_info
     
-    log_info "Backend-frontend integration completed!"
+    log_info "🎉 Backend-frontend integration completed successfully!"
     log_info ""
-    log_info "📋 Next steps:"
-    log_info "   1. Access application at: http://$(curl -s ifconfig.me 2>/dev/null || echo 'your-server-ip')"
-    log_info "   2. Admin credentials: username=admin, password=admin123"
-    log_info "   3. Check service status: sudo systemctl status cyberctf-backend"
-    log_info "   4. View logs: sudo journalctl -u cyberctf-backend -f"
-    log_info ""
-    log_info "🔧 Management commands:"
-    log_info "   Start: sudo systemctl start cyberctf-backend cyberctf-celery cyberctf-celerybeat"
-    log_info "   Stop: sudo systemctl stop cyberctf-backend cyberctf-celery cyberctf-celerybeat"
-    log_info "   Restart: sudo systemctl restart cyberctf-backend cyberctf-celery cyberctf-celerybeat"
-    log_info ""
-    log_info "⚠️  Important: Don't forget to:"
-    log_info "   - Change default admin password"
-    log_info "   - Configure email settings in $BACKEND_DIR/.env"
-    log_info "   - Set up SSL certificate for production"
+    log_info "The CyberCTF Arena is now ready for use!"
 }
 
 # Run main function
