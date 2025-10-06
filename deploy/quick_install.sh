@@ -30,7 +30,7 @@ if [ -d "cyberctf-deploy" ]; then
 fi
 
 git clone https://github.com/Mapma3eka262/cyberctf-arena.git
-cd cyberctf-deploy/deploy
+cd cyberctf-arena/deploy
 
 # Make scripts executable
 chmod +x *.sh
