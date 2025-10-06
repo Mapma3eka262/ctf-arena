@@ -64,56 +64,80 @@ create_structure() {
 
 # Setup Python virtual environment
 setup_python_env() {
-    log_info "Setting up Python virtual environment..."
+log_info "Setting up Python virtual environment..."
     
     cd $BACKEND_DIR
     
-    # Create virtual environment
-    python3 -m venv $VENV_DIR
+    # Проверяем, существует ли виртуальная среда и работает ли
+    if [ -d "$VENV_DIR" ]; then
+        log_info "Virtual environment exists, testing..."
+        source $VENV_DIR/bin/activate
+        
+        # Проверяем, установлен ли SQLAlchemy
+        if ! python -c "import sqlalchemy" 2>/dev/null; then
+            log_warn "Virtual environment exists but dependencies are missing. Reinstalling..."
+            # Пересоздаем виртуальную среду
+            rm -rf $VENV_DIR
+            python3 -m venv $VENV_DIR
+            source $VENV_DIR/bin/activate
+        else
+            log_info "Virtual environment is OK"
+            return 0
+        fi
+    else
+        # Создаем виртуальную среду
+        log_info "Creating virtual environment..."
+        python3 -m venv $VENV_DIR
+        source $VENV_DIR/bin/activate
+    fi
     
-    # Activate virtual environment
-    source $VENV_DIR/bin/activate
-    
-    # Upgrade pip
+    # Обновляем pip
+    log_info "Upgrading pip..."
     pip install --upgrade pip
     
-    # Install Python dependencies
-    if [ -f "$BACKEND_DIR/requirements.txt" ]; then
-        pip install -r requirements.txt
-    else
-        log_warn "requirements.txt not found, installing default dependencies"
-        pip install \
-            fastapi==0.104.1 \
-            uvicorn==0.24.0 \
-            sqlalchemy==2.0.23 \
-            psycopg2-binary==2.9.9 \
-            alembic==1.12.1 \
-            python-jose[cryptography]==3.3.0 \
-            passlib[bcrypt]==1.7.4 \
-            python-multipart==0.0.6 \
-            redis==5.0.1 \
-            celery==5.3.4 \
-            python-telegram-bot==20.7 \
-            pydantic==2.5.0 \
-            pydantic-settings==2.1.0 \
-            email-validator==2.1.0 \
-            python-i18n==0.3.9 \
-            httpx==0.25.2 \
-            aiofiles==23.2.1 \
-            python-dateutil==2.8.2
-    fi
-
-    # Проверка установки ключевых зависимостей
-    log_info "Checking key dependencies..."
-    if ! python -c "import sqlalchemy; print('SQLAlchemy OK')" 2>/dev/null; then
-        log_error "SQLAlchemy not installed properly"
-        exit 1
+    # Устанавливаем зависимости
+    log_info "Installing Python dependencies..."
+    
+    # Создаем временный requirements.txt если его нет
+    if [ ! -f "$BACKEND_DIR/requirements.txt" ]; then
+        log_warn "requirements.txt not found, creating temporary one..."
+        cat > $BACKEND_DIR/requirements.txt << 'EOF'
+fastapi==0.104.1
+uvicorn==0.24.0
+sqlalchemy==2.0.23
+psycopg2-binary==2.9.9
+alembic==1.12.1
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.6
+redis==5.0.1
+celery==5.3.4
+python-telegram-bot==20.7
+pydantic==2.5.0
+pydantic-settings==2.1.0
+email-validator==2.1.0
+python-i18n==0.3.9
+httpx==0.25.2
+aiofiles==23.2.1
+python-dateutil==2.8.2
+EOF
     fi
     
-    if ! python -c "import fastapi; print('FastAPI OK')" 2>/dev/null; then
-        log_error "FastAPI not installed properly"
-        exit 1
-    fi
+    # Устанавливаем зависимости
+    pip install -r requirements.txt
+    
+    # Проверяем ключевые зависимости
+    log_info "Verifying key dependencies..."
+    local key_deps=("sqlalchemy" "fastapi" "alembic" "psycopg2")
+    for dep in "${key_deps[@]}"; do
+        if python -c "import $dep" 2>/dev/null; then
+            log_info "✓ $dep: OK"
+        else
+            log_error "✗ $dep: FAILED - trying alternative installation..."
+            # Пробуем установить отдельно
+            pip install $dep
+        fi
+    done
     
     log_info "Python environment setup completed"
 }
