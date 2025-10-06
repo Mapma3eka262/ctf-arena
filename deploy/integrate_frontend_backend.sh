@@ -102,6 +102,18 @@ setup_python_env() {
             aiofiles==23.2.1 \
             python-dateutil==2.8.2
     fi
+
+    # Проверка установки ключевых зависимостей
+    log_info "Checking key dependencies..."
+    if ! python -c "import sqlalchemy; print('SQLAlchemy OK')" 2>/dev/null; then
+        log_error "SQLAlchemy not installed properly"
+        exit 1
+    fi
+    
+    if ! python -c "import fastapi; print('FastAPI OK')" 2>/dev/null; then
+        log_error "FastAPI not installed properly"
+        exit 1
+    fi
     
     log_info "Python environment setup completed"
 }
