@@ -72,6 +72,18 @@ deploy_project() {
     # Set proper permissions
     chmod -R 755 $PROJECT_DIR
     chmod 600 $PROJECT_DIR/backend/.env 2>/dev/null || true
+    fix_database_imports
+}
+
+fix_database_imports() {
+    log_info "Checking and fixing database imports..."
+    
+    local db_file="$BACKEND_DIR/app/core/database.py"
+    if [ -f "$db_file" ]; then
+        # Исправляем неправильный импорт
+        sed -i 's/from sqlalchemy\.py import create_engine/from sqlalchemy import create_engine/' "$db_file"
+        log_info "Database imports fixed"
+    fi
 }
 
 # Setup project structure
