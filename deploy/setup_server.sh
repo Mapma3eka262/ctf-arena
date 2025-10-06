@@ -92,6 +92,7 @@ install_centos() {
     
     # Install docker-compose separately
     pip3 install docker-compose
+    pip3 install SQLAlchemy
     
     # Initialize and start services
     postgresql-setup initdb
