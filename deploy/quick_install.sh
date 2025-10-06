@@ -29,7 +29,7 @@ if [ -d "cyberctf-deploy" ]; then
     rm -rf cyberctf-deploy
 fi
 
-git clone https://github.com/Mapma3eka262/cyberctf-deploy.git
+git clone https://github.com/Mapma3eka262/cyberctf-arena.git
 cd cyberctf-deploy/deploy
 
 # Make scripts executable
