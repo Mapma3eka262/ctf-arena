@@ -75,7 +75,11 @@ install_centos() {
     # Install system dependencies
     yum install -y \
         python3 \
-        python3-pip \
+        python3-pip
+        
+    pip3 install --upgrade pip
+
+    yum install -y \
         postgresql \
         postgresql-server \
         postgresql-contrib \
