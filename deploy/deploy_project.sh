@@ -9,7 +9,7 @@ NC='\033[0m' # No Color
 # Configuration
 PROJECT_NAME="cyberctf-arena"
 PROJECT_DIR="/home/cyberctf/$PROJECT_NAME"
-GIT_REPO="https://github.com/your-username/cyberctf-arena.git"
+GIT_REPO="https://github.com/Mapma3eka262/cyberctf-arena.git"
 BACKUP_DIR="/home/cyberctf/backups"
 
 # Logging functions
@@ -60,7 +60,7 @@ deploy_project() {
         git pull
     else
         log_info "Cloning repository..."
-        if [ -n "$GIT_REPO" ] && [ "$GIT_REPO" != "https://github.com/your-username/cyberctf-arena.git" ]; then
+        if [ -n "$GIT_REPO" ] && [ "$GIT_REPO" != "https://github.com/Mapma3eka262/cyberctf-arena.git" ]; then
             git clone $GIT_REPO $PROJECT_DIR
         else
             log_error "Please set GIT_REPO variable in the script"
