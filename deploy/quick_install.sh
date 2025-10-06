@@ -25,8 +25,8 @@ fi
 # Clone deploy scripts
 echo "📥 Downloading deployment scripts..."
 cd /tmp
-if [ -d "cyberctf-deploy" ]; then
-    rm -rf cyberctf-deploy
+if [ -d "cyberctf-arena" ]; then
+    rm -rf cyberctf-arena
 fi
 
 git clone https://github.com/Mapma3eka262/cyberctf-arena.git
