@@ -237,9 +237,15 @@ build_frontend() {
 setup_nginx() {
     log_info "Configuring nginx..."
 
-    mkdir /etc/nginx/sites-available
-    mkdir /etc/nginx/sites-enabled/
-    touch /etc/nginx/sites-available/cyberctf
+    sudo mkdir /etc/nginx/sites-available
+    sudo mkdir /etc/nginx/sites-enabled
+    sudo touch /etc/nginx/sites-available/cyberctf
+
+    sudo chmod 755 /etc/nginx/sites-available
+    sudo chmod 755 /etc/nginx/sites-enabled
+    sudo chmod 755 /etc/nginx/sites-available/cyberctf
+
+    sudo chown cyberctf:cyberctf /etc/nginx/sites-available/cyberctf
     # Create nginx configuration
     sudo bash -c "cat > /etc/nginx/sites-available/cyberctf << EOF
 server {
