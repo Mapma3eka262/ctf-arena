@@ -1,92 +1,85 @@
 import smtplib
-from email.mime.text import MimeText
-from email.mime.multipart import MimeMultipart
-import logging
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from app.core.config import settings
 
-logger = logging.getLogger(__name__)
-
 class EmailService:
-    
-    @staticmethod
-    def send_email(to_email: str, subject: str, body: str, is_html: bool = False):
-        """Отправка email"""
-        try:
-            if not all([settings.SMTP_SERVER, settings.SMTP_USERNAME, settings.SMTP_PASSWORD]):
-                logger.warning("Email configuration missing, skipping email send")
-                return False
-            
-            message = MimeMultipart()
-            message['From'] = settings.FROM_EMAIL
-            message['To'] = to_email
-            message['Subject'] = subject
-            
-            if is_html:
-                message.attach(MimeText(body, 'html'))
-            else:
-                message.attach(MimeText(body, 'plain'))
-            
-            with smtplib.SMTP(settings.SMTP_SERVER, settings.SMTP_PORT) as server:
-                server.starttls()
-                server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
-                server.send_message(message)
-            
-            logger.info(f"Email sent to {to_email}")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Email sending failed: {e}")
-            return False
-    
-    @staticmethod
-    def send_verification_email(email: str, username: str, verification_token: str):
-        """Отправка email для верификации"""
-        subject = "Подтверждение email - CyberCTF Arena"
+    def __init__(self):
+        self.smtp_server = settings.SMTP_SERVER
+        self.smtp_port = settings.SMTP_PORT
+        self.smtp_username = settings.SMTP_USERNAME
+        self.smtp_password = settings.SMTP_PASSWORD
+
+    async def send_confirmation_email(self, email: str, username: str):
+        """Отправка email подтверждения регистрации"""
+        subject = "Подтверждение регистрации в CyberCTF Arena"
         body = f"""
         Здравствуйте, {username}!
         
-        Для завершения регистрации в CyberCTF Arena подтвердите ваш email.
+        Благодарим за регистрацию в CyberCTF Arena.
+        Ваш аккаунт успешно создан и активирован.
         
-        Код подтверждения: {verification_token}
+        Присоединяйтесь к соревнованиям и покажите свои навыки!
         
-        Или перейдите по ссылке:
-        {settings.FRONTEND_URL}/verify-email?token={verification_token}
-        
-        Если вы не регистрировались в системе, проигнорируйте это письмо.
+        С уважением,
+        Команда CyberCTF Arena
         """
         
-        return EmailService.send_email(email, subject, body)
-    
-    @staticmethod
-    def send_password_reset_email(email: str, username: str, reset_token: str):
-        """Отправка email для сброса пароля"""
-        subject = "Сброс пароля - CyberCTF Arena"
-        body = f"""
-        Здравствуйте, {username}!
-        
-        Для сброса пароля перейдите по ссылке:
-        {settings.FRONTEND_URL}/reset-password?token={reset_token}
-        
-        Ссылка действительна в течение 1 часа.
-        
-        Если вы не запрашивали сброс пароля, проигнорируйте это письмо.
-        """
-        
-        return EmailService.send_email(email, subject, body)
-    
-    @staticmethod
-    def send_team_invitation_email(email: str, team_name: str, inviter_name: str, invite_token: str):
-        """Отправка приглашения в команду"""
-        subject = f"Приглашение в команду {team_name} - CyberCTF Arena"
+        await self._send_email(email, subject, body)
+
+    async def send_invitation_email(self, email: str, team_name: str, inviter_name: str):
+        """Отправка email с приглашением в команду"""
+        subject = f"Приглашение в команду {team_name}"
         body = f"""
         Здравствуйте!
         
-        Вы получили приглашение присоединиться к команде "{team_name}" от {inviter_name}.
+        {inviter_name} приглашает вас присоединиться к команде "{team_name}" в CyberCTF Arena.
         
-        Для принятия приглашения перейдите по ссылке:
-        {settings.FRONTEND_URL}/accept-invite?token={invite_token}
+        Для принятия приглашения войдите в систему и перейдите в раздел "Приглашения".
         
-        Ссылка действительна в течение 24 часов.
+        С уважением,
+        Команда CyberCTF Arena
         """
         
-        return EmailService.send_email(email, subject, body)
+        await self._send_email(email, subject, body)
+
+    async def send_password_reset_email(self, email: str, reset_token: str):
+        """Отправка email для сброса пароля"""
+        subject = "Сброс пароля CyberCTF Arena"
+        body = f"""
+        Вы запросили сброс пароля для вашего аккаунта в CyberCTF Arena.
+        
+        Для сброса пароля используйте следующий токен:
+        {reset_token}
+        
+        Если вы не запрашивали сброс пароля, проигнорируйте это сообщение.
+        
+        С уважением,
+        Команда CyberCTF Arena
+        """
+        
+        await self._send_email(email, subject, body)
+
+    async def _send_email(self, to_email: str, subject: str, body: str):
+        """Базовая функция отправки email"""
+        if not all([self.smtp_server, self.smtp_username, self.smtp_password]):
+            print(f"Email не отправлен (не настроен SMTP): {to_email} - {subject}")
+            return
+
+        try:
+            msg = MIMEMultipart()
+            msg['From'] = self.smtp_username
+            msg['To'] = to_email
+            msg['Subject'] = subject
+
+            msg.attach(MIMEText(body, 'plain'))
+
+            server = smtplib.SMTP(self.smtp_server, self.smtp_port)
+            server.starttls()
+            server.login(self.smtp_username, self.smtp_password)
+            server.send_message(msg)
+            server.quit()
+            
+            print(f"Email отправлен: {to_email}")
+        except Exception as e:
+            print(f"Ошибка отправки email: {e}")

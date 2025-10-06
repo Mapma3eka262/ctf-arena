@@ -1,48 +1,38 @@
 from pydantic import BaseModel, EmailStr
 from datetime import datetime
 from typing import List, Optional
-from app.schemas.user import UserResponse
 
 class TeamBase(BaseModel):
     name: str
-    ip_address: Optional[str] = None
+    description: Optional[str] = None
+    country: Optional[str] = None
+    website: Optional[str] = None
 
 class TeamCreate(TeamBase):
-    captain_username: str
+    pass
 
 class TeamUpdate(BaseModel):
     name: Optional[str] = None
-    ip_address: Optional[str] = None
+    description: Optional[str] = None
+    country: Optional[str] = None
+    website: Optional[str] = None
+
+class TeamMember(BaseModel):
+    id: int
+    username: str
+    email: str
+    role: str
+    is_active: bool
+    joined_at: datetime
 
 class TeamResponse(TeamBase):
     id: int
     score: int
-    registration_date: datetime
-    is_active: bool
-    captain_id: int
-    penalty_minutes: int
-    extended_until: Optional[datetime]
     created_at: datetime
-    
+    members: List[TeamMember]
+
     class Config:
         from_attributes = True
 
-class TeamWithMembers(TeamResponse):
-    members: List[UserResponse] = []
-    captain: Optional[UserResponse] = None
-
-class TeamRanking(BaseModel):
-    rank: int
-    team: TeamResponse
-    score: int
-    solved_challenges: int
-
-class InviteRequest(BaseModel):
+class TeamInvite(BaseModel):
     email: EmailStr
-
-class InviteResponse(BaseModel):
-    id: int
-    email: str
-    status: str
-    expires_at: datetime
-    invited_by: str

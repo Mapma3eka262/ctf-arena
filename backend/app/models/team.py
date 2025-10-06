@@ -1,24 +1,28 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey
 from sqlalchemy.orm import relationship
-from datetime import datetime
-from app.models import Base
+from sqlalchemy.sql import func
+
+from app.core.database import Base
 
 class Team(Base):
     __tablename__ = "teams"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), unique=True, index=True, nullable=False)
+    description = Column(Text)
     score = Column(Integer, default=0)
-    ip_address = Column(String(45))
-    registration_date = Column(DateTime, default=datetime.utcnow)
-    is_active = Column(Boolean, default=True)
-    captain_id = Column(Integer, ForeignKey('users.id'))
-    penalty_minutes = Column(Integer, default=0)
-    extended_until = Column(DateTime)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    avatar_url = Column(String(255))
+    country = Column(String(50))
+    website = Column(String(255))
     
+    # Связи
     members = relationship("User", back_populates="team")
-    captain = relationship("User", foreign_keys=[captain_id])
     submissions = relationship("Submission", back_populates="team")
-    services = relationship("Service", back_populates="team")
-    invitations = relationship("TeamInvite", back_populates="team")
+    invitations = relationship("Invitation", back_populates="team")
+    
+    # Отметки времени
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+    def __repr__(self):
+        return f"<Team(name='{self.name}', score={self.score})>"

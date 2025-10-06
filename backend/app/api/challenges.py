@@ -1,66 +1,69 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List
 
 from app.core.database import get_db
-from app.core.security import get_current_user
-from app.models import User, Challenge, Submission
-from app.schemas.challenge import ChallengeResponse, ChallengeWithSolved
+from app.core.auth import get_current_user
+from app.models.user import User
+from app.models.challenge import Challenge
+from app.models.submission import Submission
 
 router = APIRouter()
 
-@router.get("/", response_model=List[ChallengeWithSolved])
+@router.get("/")
 async def get_challenges(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Список активных заданий"""
+    """Получение списка заданий"""
     challenges = db.query(Challenge).filter(Challenge.is_active == True).all()
     
-    result = []
-    for challenge in challenges:
-        # Проверяем, решила ли команда это задание
-        solved = db.query(Submission).filter(
-            Submission.challenge_id == challenge.id,
-            Submission.team_id == current_user.team_id,
-            Submission.status == 'accepted'
-        ).first() is not None
-        
-        challenge_data = ChallengeWithSolved(
-            id=challenge.id,
-            title=challenge.title,
-            category=challenge.category,
-            points=challenge.points,
-            description=challenge.description,
-            is_active=challenge.is_active,
-            created_at=challenge.created_at,
-            solved=solved
-        )
-        result.append(challenge_data)
+    # Получаем статусы решений для текущей команды
+    team_submissions = {}
+    if current_user.team:
+        submissions = db.query(Submission).filter(
+            Submission.team_id == current_user.team.id
+        ).all()
+        team_submissions = {sub.challenge_id: sub.status for sub in submissions}
     
-    return result
+    return [
+        {
+            "id": challenge.id,
+            "title": challenge.title,
+            "category": challenge.category,
+            "description": challenge.description,
+            "points": challenge.points,
+            "difficulty": challenge.difficulty,
+            "is_solved": team_submissions.get(challenge.id) == "accepted",
+            "solved_count": challenge.solved_count,
+            "first_blood_user": challenge.first_blood_user
+        }
+        for challenge in challenges
+    ]
 
-@router.get("/{challenge_id}", response_model=ChallengeResponse)
-async def get_challenge(
+@router.get("/{challenge_id}")
+async def get_challenge_detail(
     challenge_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Информация о задании"""
+    """Получение детальной информации о задании"""
     challenge = db.query(Challenge).filter(
         Challenge.id == challenge_id,
         Challenge.is_active == True
     ).first()
     
     if not challenge:
-        raise HTTPException(status_code=404, detail="Challenge not found")
+        raise HTTPException(status_code=404, detail="Задание не найдено")
     
-    return challenge
-
-@router.get("/categories", response_model=List[str])
-async def get_categories(
-    db: Session = Depends(get_db)
-):
-    """Список категорий"""
-    categories = db.query(Challenge.category).distinct().all()
-    return [category[0] for category in categories if category[0]]
+    return {
+        "id": challenge.id,
+        "title": challenge.title,
+        "category": challenge.category,
+        "description": challenge.description,
+        "points": challenge.points,
+        "difficulty": challenge.difficulty,
+        "hint": challenge.hint,
+        "files": challenge.files,
+        "created_at": challenge.created_at,
+        "solved_count": challenge.solved_count
+    }

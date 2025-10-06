@@ -1,18 +1,29 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey
-from sqlalchemy.orm import relationship
-from datetime import datetime
-from app.models import Base
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text
+from sqlalchemy.sql import func
+
+from app.core.database import Base
 
 class Service(Base):
     __tablename__ = "services"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
-    type = Column(String(20))  # 'web', 'ssh', 'database'
-    url = Column(String(500))  # URL для HTTP проверки
-    status = Column(String(20), default='offline')  # 'online', 'offline'
-    team_id = Column(Integer, ForeignKey('teams.id'))
-    last_checked = Column(DateTime)
-    last_status_change = Column(DateTime)
+    type = Column(String(50), nullable=False)  # web, ssh, database, etc.
+    host = Column(String(100), nullable=False)
+    port = Column(Integer, nullable=False)
+    check_endpoint = Column(String(100))  # Для HTTP проверок
+    expected_status = Column(Integer, default=200)
+    is_active = Column(Boolean, default=True)
     
-    team = relationship("Team", back_populates="services")
+    # Статус
+    status = Column(String(20), default="unknown")  # online, offline, unknown
+    last_checked = Column(DateTime)
+    response_time = Column(Integer)  # в миллисекундах
+    error_message = Column(Text)
+    
+    # Отметки времени
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+    def __repr__(self):
+        return f"<Service(name='{self.name}', status='{self.status}')>"

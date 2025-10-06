@@ -1,54 +1,50 @@
-import logging
-from telegram import Bot
-from telegram.error import TelegramError
+import requests
 from app.core.config import settings
 
-logger = logging.getLogger(__name__)
-
 class TelegramService:
-    _bot = None
-    
-    @classmethod
-    def get_bot(cls):
-        """Получение экземпляра бота"""
-        if cls._bot is None and settings.TELEGRAM_BOT_TOKEN:
-            cls._bot = Bot(token=settings.TELEGRAM_BOT_TOKEN)
-        return cls._bot
-    
-    @classmethod
-    def send_message(cls, chat_id: str, message: str) -> bool:
-        """Отправка сообщения в Telegram"""
+    def __init__(self):
+        self.bot_token = settings.TELEGRAM_BOT_TOKEN
+        self.chat_id = settings.TELEGRAM_CHAT_ID
+
+    async def send_notification(self, message: str):
+        """Отправка уведомления в Telegram"""
+        if not self.bot_token or not self.chat_id:
+            return
+
+        url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
+        payload = {
+            "chat_id": self.chat_id,
+            "text": message,
+            "parse_mode": "HTML"
+        }
+
         try:
-            bot = cls.get_bot()
-            if not bot:
-                logger.warning("Telegram bot not configured")
-                return False
-            
-            bot.send_message(chat_id=chat_id, text=message)
-            logger.info(f"Telegram message sent to {chat_id}")
-            return True
-            
-        except TelegramError as e:
-            logger.error(f"Telegram message sending failed: {e}")
+            response = requests.post(url, json=payload)
+            return response.status_code == 200
+        except Exception as e:
+            print(f"Ошибка отправки Telegram уведомления: {e}")
             return False
-    
-    @classmethod
-    def send_admin_alert(cls, message: str) -> bool:
-        """Отправка уведомления администраторам"""
-        if not settings.TELEGRAM_ADMIN_CHAT_ID:
-            logger.warning("Telegram admin chat ID not configured")
-            return False
-        
-        return cls.send_message(settings.TELEGRAM_ADMIN_CHAT_ID, f"🚨 {message}")
-    
-    @classmethod
-    def send_service_status_alert(cls, service_name: str, status: str):
-        """Уведомление о изменении статуса сервиса"""
-        message = f"Сервис {service_name} изменил статус: {status}"
-        return cls.send_admin_alert(message)
-    
-    @classmethod
-    def send_first_blood_alert(cls, challenge_name: str, team_name: str, user_name: str):
-        """Уведомление о первой крови"""
-        message = f"🎉 Первая кровь! {user_name} из команды {team_name} решил задание {challenge_name}"
-        return cls.send_admin_alert(message)
+
+    async def send_flag_submission_notification(self, username: str, challenge_title: str, status: str):
+        """Уведомление об отправке флага"""
+        message = f"""
+🚩 <b>Новая отправка флага</b>
+
+👤 Пользователь: {username}
+🎯 Задание: {challenge_title}
+📊 Статус: {status}
+        """
+        await self.send_notification(message)
+
+    async def send_first_blood_notification(self, username: str, challenge_title: str, team_name: str):
+        """Уведомление о First Blood"""
+        message = f"""
+🩸 <b>First Blood!</b>
+
+👤 Игрок: {username}
+🏴‍☠️ Команда: {team_name}
+🎯 Задание: {challenge_title}
+
+Поздравляем с первой кровью! 🎉
+        """
+        await self.send_notification(message)

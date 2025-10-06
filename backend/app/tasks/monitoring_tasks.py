@@ -1,72 +1,62 @@
-from celery import shared_task
-import logging
-from sqlalchemy.orm import Session
-from datetime import datetime
-
-from app.tasks.celery import get_db
+from app.tasks.celery import celery_app
+from app.core.database import SessionLocal
 from app.services.monitoring_service import MonitoringService
-from app.models import Competition
+from app.services.telegram_service import TelegramService
 
-logger = logging.getLogger(__name__)
-
-@shared_task
-def monitor_all_services():
-    """Проверка всех сервисов"""
+@celery_app.task
+def check_all_services_task():
+    """Периодическая проверка всех сервисов"""
+    db = SessionLocal()
+    monitoring_service = MonitoringService(db)
+    telegram_service = TelegramService()
+    
     try:
-        db = next(get_db())
-        import asyncio
-        asyncio.run(MonitoringService.check_all_services(db))
-        logger.info("Service monitoring completed successfully")
-    except Exception as e:
-        logger.error(f"Service monitoring failed: {e}")
-    finally:
-        db.close()
-
-@shared_task
-def restart_failed_services():
-    """Перезапуск упавших сервисов"""
-    try:
-        db = next(get_db())
-        # Здесь должна быть логика перезапуска сервисов
-        # Например, через Docker API или SSH
-        logger.info("Failed services restart completed")
-    except Exception as e:
-        logger.error(f"Failed services restart failed: {e}")
-    finally:
-        db.close()
-
-@shared_task
-def check_competition_time():
-    """Проверка времени соревнования"""
-    try:
-        db = next(get_db())
-        current_time = datetime.utcnow()
+        results = monitoring_service.check_all_services()
         
-        # Получаем активное соревнование
-        competition = db.query(Competition).filter(Competition.is_active == True).first()
+        # Отправляем уведомление о проблемах
+        offline_services = [r for r in results if r['status'] == 'offline']
+        if offline_services:
+            message = "🔴 <b>Обнаружены проблемы с сервисами:</b>\n\n"
+            for service in offline_services:
+                message += f"• {service['service']} - offline\n"
+            
+            import asyncio
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(telegram_service.send_notification(message))
+            loop.close()
         
-        if competition:
-            if competition.end_time and current_time >= competition.end_time:
-                # Соревнование завершено
-                competition.is_active = False
-                db.commit()
-                logger.info("Competition has ended automatically")
-                
-                # Запускаем генерацию отчета
-                generate_competition_report.delay()
+        return {
+            "checked_services": len(results),
+            "online": len([r for r in results if r['status'] == 'online']),
+            "offline": len(offline_services)
+        }
+        
     except Exception as e:
-        logger.error(f"Competition time check failed: {e}")
+        print(f"Ошибка при проверке сервисов: {e}")
+        return {"error": str(e)}
     finally:
         db.close()
 
-@shared_task
-def generate_competition_report():
-    """Генерация финального отчета"""
+@celery_app.task
+def update_service_metrics_task():
+    """Обновление метрик сервисов"""
+    db = SessionLocal()
+    
     try:
-        db = next(get_db())
-        # Логика генерации отчета
-        logger.info("Competition report generated")
+        from app.models.service import Service
+        from datetime import datetime
+        
+        services = db.query(Service).all()
+        
+        for service in services:
+            # Здесь можно добавить логику сбора метрик
+            # например, использование CPU, памяти и т.д.
+            pass
+            
+        db.commit()
+        
     except Exception as e:
-        logger.error(f"Competition report generation failed: {e}")
+        print(f"Ошибка при обновлении метрик: {e}")
     finally:
         db.close()

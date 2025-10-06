@@ -1,119 +1,72 @@
-from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
 import secrets
-from fastapi import HTTPException
-
-from app.models import TeamInvite, User, Team
-from app.core.config import settings
-from app.tasks.email_tasks import send_team_invitation
+import string
+from sqlalchemy.orm import Session
+from app.models.invitation import Invitation
+from app.models.user import User
 
 class InvitationService:
-    
-    @staticmethod
-    def create_invitation(db: Session, team_id: int, invited_by: int, email: str) -> dict:
+    def __init__(self, db: Session):
+        self.db = db
+
+    def create_invitation(self, team_id: int, email: str, invited_by_id: int) -> Invitation:
         """Создание приглашения в команду"""
-        # Проверка существования пользователя с таким email
-        existing_user = db.query(User).filter(User.email == email).first()
-        if existing_user and existing_user.team_id:
-            raise HTTPException(status_code=400, detail="User already in a team")
+        # Генерация токена
+        token = self._generate_token()
         
-        # Проверка существования приглашения
-        existing_invite = db.query(TeamInvite).filter(
-            TeamInvite.team_id == team_id,
-            TeamInvite.email == email,
-            TeamInvite.status == 'pending'
-        ).first()
-        
-        if existing_invite:
-            raise HTTPException(status_code=400, detail="Invitation already sent")
-        
-        # Проверка размера команды
-        team = db.query(Team).filter(Team.id == team_id).first()
-        if team and len(team.members) >= settings.MAX_TEAM_SIZE:
-            raise HTTPException(status_code=400, detail="Team is full")
-        
-        # Создание приглашения
-        token = secrets.token_urlsafe(32)
-        expires_at = datetime.utcnow() + timedelta(hours=settings.INVITATION_EXPIRE_HOURS)
-        
-        invite = TeamInvite(
+        invitation = Invitation(
             team_id=team_id,
             email=email,
-            token=token,
-            invited_by=invited_by,
-            expires_at=expires_at,
-            status='pending'
+            invited_by_id=invited_by_id,
+            token=token
         )
         
-        db.add(invite)
-        db.commit()
+        self.db.add(invitation)
+        self.db.commit()
+        self.db.refresh(invitation)
         
-        # Отправка email приглашения
-        send_team_invitation.delay(invite.id)
-        
-        return {
-            "id": invite.id,
-            "email": invite.email,
-            "status": invite.status,
-            "expires_at": invite.expires_at,
-            "invited_by": invite.inviter.username
-        }
-    
-    @staticmethod
-    def accept_invitation(db: Session, token: str, user_id: int) -> dict:
+        return invitation
+
+    def accept_invitation(self, token: str, user_id: int) -> bool:
         """Принятие приглашения"""
-        invite = db.query(TeamInvite).filter(TeamInvite.token == token).first()
-        if not invite:
-            raise HTTPException(status_code=404, detail="Invitation not found")
+        invitation = self.db.query(Invitation).filter(
+            Invitation.token == token,
+            Invitation.status == "pending"
+        ).first()
         
-        # Проверка срока действия
-        if datetime.utcnow() > invite.expires_at:
-            invite.status = 'expired'
-            db.commit()
-            raise HTTPException(status_code=400, detail="Invitation expired")
-        
-        # Проверка статуса
-        if invite.status != 'pending':
-            raise HTTPException(status_code=400, detail="Invitation already processed")
-        
-        user = db.query(User).filter(User.id == user_id).first()
+        if not invitation or invitation.is_expired():
+            return False
+
+        user = self.db.query(User).filter(User.id == user_id).first()
         if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        
-        # Проверка email
-        if user.email != invite.email:
-            raise HTTPException(status_code=400, detail="Email does not match invitation")
-        
-        # Проверка, что пользователь не в другой команде
+            return False
+
+        # Проверяем, не состоит ли пользователь уже в команде
         if user.team_id:
-            raise HTTPException(status_code=400, detail="User already in a team")
+            return False
+
+        # Добавляем пользователя в команду
+        user.team_id = invitation.team_id
+        invitation.status = "accepted"
         
-        # Проверка размера команды
-        team = invite.team
-        if len(team.members) >= settings.MAX_TEAM_SIZE:
-            raise HTTPException(status_code=400, detail="Team is full")
-        
-        # Добавление пользователя в команду
-        user.team_id = team.id
-        user.role = 'member'
-        
-        # Обновление статуса приглашения
-        invite.status = 'accepted'
-        
-        db.commit()
-        
-        return {"message": "Invitation accepted successfully"}
-    
-    @staticmethod
-    def cleanup_expired_invitations(db: Session):
+        self.db.commit()
+        return True
+
+    def _generate_token(self, length: int = 32) -> str:
+        """Генерация случайного токена"""
+        alphabet = string.ascii_letters + string.digits
+        return ''.join(secrets.choice(alphabet) for _ in range(length))
+
+    def cleanup_expired_invitations(self):
         """Очистка просроченных приглашений"""
-        expired_invites = db.query(TeamInvite).filter(
-            TeamInvite.status == 'pending',
-            TeamInvite.expires_at < datetime.utcnow()
+        from datetime import datetime
+        
+        expired_invitations = self.db.query(Invitation).filter(
+            Invitation.status == "pending",
+            Invitation.expires_at < datetime.utcnow()
         ).all()
         
-        for invite in expired_invites:
-            invite.status = 'expired'
+        for invitation in expired_invitations:
+            invitation.status = "expired"
         
-        db.commit()
-        return len(expired_invites)
+        self.db.commit()
+        return len(expired_invitations)

@@ -5,32 +5,27 @@ from typing import Optional
 class UserBase(BaseModel):
     username: str
     email: EmailStr
-    role: str
-    language: str
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
 
 class UserCreate(UserBase):
     password: str
 
 class UserUpdate(BaseModel):
-    username: Optional[str] = None
     email: Optional[EmailStr] = None
-    language: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
 
 class UserResponse(UserBase):
     id: int
-    team_id: Optional[int]
     is_active: bool
-    email_verified: bool
+    is_admin: bool
+    is_captain: bool
     created_at: datetime
-    
+    last_login: Optional[datetime]
+
     class Config:
         from_attributes = True
 
-class UserProfile(BaseModel):
-    id: int
-    username: str
-    email: str
-    role: str
-    team_name: Optional[str]
-    score: Optional[int]
-    language: str
+class UserInDB(UserResponse):
+    hashed_password: str

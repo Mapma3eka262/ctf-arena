@@ -1,53 +1,42 @@
 #!/bin/bash
 
-# Quick install script for CyberCTF Arena
-
+# CyberCTF Arena - Quick Install Script for Ubuntu 24.04
 set -e
 
-echo "🚀 Starting CyberCTF Arena Quick Installation..."
+echo "🎯 Быстрая установка CyberCTF Arena на Ubuntu 24.04"
 
-# Check if running as root
+# Проверка прав
 if [ "$EUID" -ne 0 ]; then
-    echo "❌ Please run as root: sudo $0"
+    echo "❌ Запустите скрипт с правами root: sudo ./quick_install.sh"
     exit 1
 fi
 
-# Install git if not present
-if ! command -v git &> /dev/null; then
-    echo "📦 Installing git..."
-    if command -v apt-get &> /dev/null; then
-        apt-get update && apt-get install -y git
-    elif command -v yum &> /dev/null; then
-        yum install -y git
-    fi
-fi
+# Создание директории проекта
+PROJECT_DIR="/opt/ctf-arena"
+mkdir -p $PROJECT_DIR
+cd $PROJECT_DIR
 
-# Clone deploy scripts
-echo "📥 Downloading deployment scripts..."
-cd /tmp
-if [ -d "cyberctf-arena" ]; then
-    rm -rf cyberctf-arena
-fi
+echo "📥 Клонирование/копирование проекта..."
+# В реальном сценарии здесь будет git clone
+# git clone https://github.com/your-org/ctf-arena.git .
 
-git clone https://github.com/Mapma3eka262/cyberctf-arena.git
-cd cyberctf-arena/deploy
-
-# Make scripts executable
-chmod +x *.sh
-
-# Run setup
-echo "🛠 Setting up server..."
-./setup_server.sh
-
-# Switch to cyberctf user and deploy
-echo "📦 Deploying application..."
-sudo -u cyberctf ./deploy_project.sh
+echo "🚀 Запуск полной установки..."
+chmod +x deploy/*.sh
+./deploy/setup_server.sh
+./deploy/integrate_frontend_backend.sh  
+./deploy/deploy_project.sh
 
 echo ""
-echo "🎉 Installation completed!"
+echo "🎉 Установка CyberCTF Arena завершена!"
 echo ""
-echo "Quick start:"
-echo "  Access: http://$(curl -s ifconfig.me)"
-echo "  Admin: username=admin, password=admin123"
-echo "  Manage: /home/cyberctf/cyberctf-arena/manage.sh"
+echo "🌐 Приложение доступно по адресу: http://$(hostname -I | awk '{print $1}')"
 echo ""
+echo "🛠️  Управление:"
+echo "   sudo $PROJECT_DIR/manage.sh status  - статус сервисов"
+echo "   sudo $PROJECT_DIR/manage.sh logs    - просмотр логов"
+echo "   sudo $PROJECT_DIR/manage.sh backup  - бэкап БД"
+echo ""
+echo "⚠️  Дополнительные шаги:"
+echo "   1. Настройте доменное имя и SSL"
+echo "   2. Измените секретные ключи в настройках"
+echo "   3. Настройте почтовый сервис для уведомлений"

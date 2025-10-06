@@ -1,27 +1,46 @@
 from app.core.config import settings
 
-# Конфигурация Celery
+# Конфигурация Celery для Ubuntu
 broker_url = settings.REDIS_URL
 result_backend = settings.REDIS_URL
 
+# Настройки для Ubuntu production
 task_serializer = 'json'
 result_serializer = 'json'
 accept_content = ['json']
 timezone = 'Europe/Moscow'
 enable_utc = True
 
-# Расписание задач
+# Оптимизации для production
+worker_prefetch_multiplier = 4
+worker_max_tasks_per_child = 1000
+task_acks_late = True
+worker_disable_rate_limits = False
+
+# Очереди
+task_routes = {
+    'app.tasks.email_tasks.*': {'queue': 'email'},
+    'app.tasks.monitoring_tasks.*': {'queue': 'monitoring'},
+    'app.tasks.invitation_tasks.*': {'queue': 'default'},
+    'app.tasks.cleanup_tasks.*': {'queue': 'cleanup'},
+}
+
+# Расписание задач для Ubuntu
 beat_schedule = {
-    'monitor-services-every-3-minutes': {
-        'task': 'app.tasks.monitoring_tasks.monitor_all_services',
-        'schedule': 180.0,  # 3 минуты
+    'check-services-every-5-minutes': {
+        'task': 'app.tasks.monitoring_tasks.check_all_services_task',
+        'schedule': 300.0,  # 5 минут
     },
-    'cleanup-expired-invitations': {
-        'task': 'app.tasks.cleanup_tasks.cleanup_expired_invitations',
-        'schedule': 3600.0,  # 1 час
+    'cleanup-expired-invitations-daily': {
+        'task': 'app.tasks.invitation_tasks.cleanup_expired_invitations_task',
+        'schedule': 86400.0,  # 24 часа
     },
-    'check-competition-time': {
-        'task': 'app.tasks.monitoring_tasks.check_competition_time',
-        'schedule': 60.0,  # 1 минута
+    'cleanup-old-submissions-weekly': {
+        'task': 'app.tasks.cleanup_tasks.cleanup_old_submissions_task',
+        'schedule': 604800.0,  # 7 дней
+    },
+    'rotate-flags-daily': {
+        'task': 'app.tasks.cleanup_tasks.rotate_flags_task',
+        'schedule': 86400.0,  # 24 часа
     },
 }

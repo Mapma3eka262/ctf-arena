@@ -1,23 +1,37 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 from datetime import datetime
-from app.models import Base
+
+from app.core.database import Base
+from app.core.security import get_password_hash
 
 class User(Base):
     __tablename__ = "users"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String(50), unique=True, index=True, nullable=False)
     email = Column(String(100), unique=True, index=True, nullable=False)
-    password_hash = Column(String(255), nullable=False)
-    role = Column(String(20), default='member')  # 'admin', 'captain', 'member'
-    team_id = Column(Integer, ForeignKey('teams.id'))
-    language = Column(String(2), default='ru')  # 'ru', 'en'
+    hashed_password = Column(String(255), nullable=False)
+    first_name = Column(String(50))
+    last_name = Column(String(50))
     is_active = Column(Boolean, default=True)
-    email_verified = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    is_admin = Column(Boolean, default=False)
+    is_captain = Column(Boolean, default=False)
     
+    # Связи
+    team_id = Column(Integer, ForeignKey("teams.id"))
     team = relationship("Team", back_populates="members")
-    submissions = relationship("Submission", back_populates="user")
-    sent_invitations = relationship("TeamInvite", foreign_keys="TeamInvite.invited_by", back_populates="inviter")
+    
+    # Отметки времени
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    last_login = Column(DateTime)
+    joined_at = Column(DateTime, default=func.now())
+
+    def set_password(self, password: str):
+        """Установка хешированного пароля"""
+        self.hashed_password = get_password_hash(password)
+
+    def __repr__(self):
+        return f"<User(username='{self.username}', email='{self.email}')>"

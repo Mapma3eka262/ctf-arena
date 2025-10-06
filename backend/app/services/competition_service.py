@@ -1,118 +1,63 @@
+from datetime import datetime
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
-from app.models import Competition, Team
+from app.models.competition import Competition
 
 class CompetitionService:
-    
-    @staticmethod
-    def get_current_competition(db: Session) -> Competition:
+    def __init__(self, db: Session):
+        self.db = db
+
+    def get_current_competition(self) -> Competition:
         """Получение текущего активного соревнования"""
-        return db.query(Competition).filter(Competition.is_active == True).first()
-    
-    @staticmethod
-    def extend_team_time(db: Session, team_id: int, penalty_minutes: int = None):
-        """Продление времени команде с штрафом"""
-        team = db.query(Team).filter(Team.id == team_id).first()
-        if not team:
-            raise HTTPException(status_code=404, detail="Team not found")
+        now = datetime.utcnow()
+        return self.db.query(Competition).filter(
+            Competition.is_active == True,
+            Competition.start_time <= now,
+            Competition.end_time >= now
+        ).first()
+
+    def start_competition(self, competition_id: int) -> bool:
+        """Запуск соревнования"""
+        competition = self.db.query(Competition).filter(Competition.id == competition_id).first()
+        if competition:
+            competition.is_active = True
+            self.db.commit()
+            return True
+        return False
+
+    def stop_competition(self, competition_id: int) -> bool:
+        """Остановка соревнования"""
+        competition = self.db.query(Competition).filter(Competition.id == competition_id).first()
+        if competition:
+            competition.is_active = False
+            self.db.commit()
+            return True
+        return False
+
+    def get_competition_time_remaining(self, competition_id: int) -> int:
+        """Получение оставшегося времени соревнования в секундах"""
+        competition = self.db.query(Competition).filter(Competition.id == competition_id).first()
+        if not competition or not competition.is_running():
+            return 0
         
-        competition = CompetitionService.get_current_competition(db)
-        if not competition:
-            raise HTTPException(status_code=400, detail="No active competition")
+        now = datetime.utcnow()
+        remaining = competition.end_time - now
+        return max(0, int(remaining.total_seconds()))
+
+    def get_leaderboard(self, competition_id: int, limit: int = 10):
+        """Получение таблицы лидеров для соревнования"""
+        from app.models.team import Team
+        from app.models.submission import Submission
         
-        # Используем штраф из настроек соревнования, если не указан
-        penalty = penalty_minutes or competition.penalty_minutes
+        # В реальной системе здесь будет сложный запрос
+        # для подсчета очков только за текущее соревнование
+        teams = self.db.query(Team).order_by(Team.score.desc()).limit(limit).all()
         
-        # Увеличиваем штрафные минуты
-        team.penalty_minutes += penalty
-        
-        # Устанавливаем время продления
-        team.extended_until = datetime.utcnow() + timedelta(minutes=penalty)
-        
-        db.commit()
-        
-        return {
-            "message": f"Team time extended with {penalty} minutes penalty",
-            "penalty_minutes": team.penalty_minutes,
-            "extended_until": team.extended_until
-        }
-    
-    @staticmethod
-    def get_competition_time_remaining(db: Session, team_id: int) -> dict:
-        """Получение оставшегося времени для команды"""
-        competition = CompetitionService.get_current_competition(db)
-        if not competition:
-            return {"active": False}
-        
-        team = db.query(Team).filter(Team.id == team_id).first()
-        if not team:
-            return {"active": False}
-        
-        base_end_time = competition.end_time
-        if team.extended_until and team.extended_until > base_end_time:
-            end_time = team.extended_until
-        else:
-            end_time = base_end_time
-        
-        time_remaining = end_time - datetime.utcnow()
-        
-        return {
-            "active": competition.is_active,
-            "end_time": end_time,
-            "time_remaining_seconds": max(0, int(time_remaining.total_seconds())),
-            "has_penalty": team.penalty_minutes > 0,
-            "penalty_minutes": team.penalty_minutes
-        }
-    
-    @staticmethod
-    def generate_competition_report(db: Session, competition_id: int) -> dict:
-        """Генерация отчета по соревнованию"""
-        competition = db.query(Competition).filter(Competition.id == competition_id).first()
-        if not competition:
-            raise HTTPException(status_code=404, detail="Competition not found")
-        
-        # Топ команд
-        top_teams = db.query(Team).filter(Team.is_active == True).order_by(Team.score.desc()).limit(10).all()
-        
-        # Статистика по заданиям
-        from app.models import Challenge, Submission
-        challenges = db.query(Challenge).all()
-        challenge_stats = []
-        
-        for challenge in challenges:
-            total_submissions = db.query(Submission).filter(Submission.challenge_id == challenge.id).count()
-            correct_submissions = db.query(Submission).filter(
-                Submission.challenge_id == challenge.id,
-                Submission.status == 'accepted'
-            ).count()
-            
-            challenge_stats.append({
-                "challenge_id": challenge.id,
-                "title": challenge.title,
-                "category": challenge.category,
-                "points": challenge.points,
-                "total_submissions": total_submissions,
-                "correct_submissions": correct_submissions,
-                "success_rate": (correct_submissions / total_submissions * 100) if total_submissions > 0 else 0
-            })
-        
-        return {
-            "competition": {
-                "name": competition.name,
-                "start_time": competition.start_time,
-                "end_time": competition.end_time,
-                "duration_hours": int((competition.end_time - competition.start_time).total_seconds() / 3600)
-            },
-            "top_teams": [
-                {
-                    "rank": i + 1,
-                    "name": team.name,
-                    "score": team.score,
-                    "members_count": len(team.members)
-                }
-                for i, team in enumerate(top_teams)
-            ],
-            "challenge_stats": challenge_stats,
-            "total_teams": db.query(Team).filter(Team.is_active == True).count(),
-            "total_participants": db.query(User).filter(User.team_id.isnot(None)).count()
-        }
+        return [
+            {
+                "position": idx + 1,
+                "team_name": team.name,
+                "score": team.score,
+                "country": team.country
+            }
+            for idx, team in enumerate(teams)
+        ]

@@ -1,6 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+
 from app.core.config import settings
 
 # Создание движка базы данных
@@ -13,12 +14,14 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 def get_db():
-    """
-    Dependency для получения сессии базы данных.
-    Используется в FastAPI dependencies.
-    """
+    """Зависимость для получения сессии базы данных"""
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
+
+def init_db():
+    """Инициализация базы данных"""
+    from app.models import user, team, challenge, submission, service, invitation, competition
+    Base.metadata.create_all(bind=engine)
