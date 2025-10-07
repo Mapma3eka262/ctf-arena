@@ -38,7 +38,17 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "uploads"
     MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10MB
     
+    # Настройки соревнования
+    COMPETITION_START_TIME: str = "2024-09-25T00:00:00"
+    COMPETITION_END_TIME: str = "2024-09-27T23:59:59"
+    MAX_TEAM_SIZE: int = 5
+    
+    # Настройки логирования
+    LOG_LEVEL: str = "INFO"
+    LOG_FILE: str = "/opt/ctf-arena/logs/ctf-arena.log"
+
     class Config:
-        env_file = ".env"
+        env_file = "/opt/ctf-arena/.env"
+        case_sensitive = False
 
 settings = Settings()
