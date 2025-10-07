@@ -6,7 +6,7 @@ from app.core.auth import get_current_user
 from app.models.user import User
 from app.models.team import Team
 from app.models.invitation import Invitation
-from app.schemas.team import TeamInvite
+from app.schemas.invitation import TeamInvite  # Импорт из schemas
 from app.services.invitation_service import InvitationService
 from app.services.email_service import EmailService
 
