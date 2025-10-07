@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# CyberCTF Arena - Integration Script
+# CyberCTF Arena - Fixed Integration Script for Ubuntu 24.04
 set -e
 
-echo "🔗 Интеграция фронтенда и бэкенда..."
+echo "🔗 Интеграция фронтенда и бэкенда (исправленная версия)..."
 
 # Проверка прав
 if [ "$EUID" -ne 0 ]; then
@@ -37,12 +37,18 @@ fi
 
 source venv/bin/activate
 
-# Установка зависимостей Python
-echo "📦 Установка Python зависимостей..."
+# Установка исправленных зависимостей Python
+echo "📦 Установка Python зависимостей (исправленные версии)..."
 pip install --upgrade pip
 
+# Устанавливаем bcrypt отдельно с правильными флагами
+pip install "bcrypt==4.1.1" --no-build-isolation
+
 if [ -f "requirements.txt" ]; then
-    pip install -r requirements.txt
+    # Устанавливаем остальные зависимости
+    pip install -r requirements.txt --no-deps
+    # Затем устанавливаем зависимости без версий для разрешения конфликтов
+    pip install fastapi uvicorn sqlalchemy alembic psycopg2-binary python-jose requests python-dotenv celery redis
     echo "✅ Зависимости установлены"
 else
     echo "❌ Файл requirements.txt не найден"
@@ -59,24 +65,39 @@ if ! systemctl is-active --quiet postgresql; then
     echo "✅ PostgreSQL запущен"
 fi
 
-# Используем специальный скрипт для инициализации БД
-if [ -f "init_db.py" ]; then
-    python3 init_db.py
+# Используем простой скрипт для инициализации БД
+if [ -f "simple_init_db.py" ]; then
+    python3 simple_init_db.py
 else
-    # Альтернативный метод
+    # Альтернативный метод с обработкой ошибок bcrypt
+    echo "⚠️  Используем альтернативный метод инициализации..."
     export PYTHONPATH="$BACKEND_DIR"
     python3 -c "
 import sys
+import os
 sys.path.append('$BACKEND_DIR')
+
 try:
-    from app.core.database import init_db
-    init_db()
-    print('✅ База данных инициализирована')
+    # Пытаемся использовать простую инициализацию
+    from sqlalchemy import create_engine, text
+    from app.core.config import settings
+    
+    print('Создание таблиц базы данных...')
+    engine = create_engine(settings.DATABASE_URL)
+    
+    # Простая проверка подключения
+    with engine.connect() as conn:
+        conn.execute(text('SELECT 1'))
+        print('✅ Подключение к базе данных успешно')
+    
+    # Импортируем и запускаем стандартную инициализацию
+    from app.core.database import Base, engine
+    Base.metadata.create_all(bind=engine)
+    print('✅ Таблицы базы данных созданы')
+    
 except Exception as e:
     print(f'❌ Ошибка инициализации БД: {e}')
-    # Показываем детали ошибки для отладки
-    import traceback
-    traceback.print_exc()
+    print('Попробуйте запустить simple_init_db.py вручную')
     sys.exit(1)
 "
 fi
