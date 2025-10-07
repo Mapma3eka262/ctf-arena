@@ -6,16 +6,37 @@ from fastapi import HTTPException, status
 
 from app.core.config import settings
 
-# Контекст для хеширования паролей
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Контекст для хеширования паролей с исправлением для Python 3.12
+try:
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+except Exception as e:
+    # Fallback на прямую работу с bcrypt если passlib не работает
+    import bcrypt
+    pwd_context = None
+    print(f"⚠️  Passlib bcrypt context failed, using direct bcrypt: {e}")
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Проверка пароля"""
-    return pwd_context.verify(plain_password, hashed_password)
+    if pwd_context:
+        return pwd_context.verify(plain_password, hashed_password)
+    else:
+        # Прямая проверка с bcrypt
+        import bcrypt
+        try:
+            return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+        except Exception:
+            return False
 
 def get_password_hash(password: str) -> str:
     """Хеширование пароля"""
-    return pwd_context.hash(password)
+    if pwd_context:
+        return pwd_context.hash(password)
+    else:
+        # Прямое хеширование с bcrypt
+        import bcrypt
+        salt = bcrypt.gensalt()
+        hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+        return hashed.decode('utf-8')
 
 def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None) -> str:
     """Создание JWT токена"""
