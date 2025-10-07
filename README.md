@@ -122,35 +122,24 @@ cyberctf-arena/
 
 ## 🛠️ Установка
 
-### Быстрая установка (рекомендуется)
-
-```bash
-# Скачайте скрипт установки
-wget https://raw.githubusercontent.com/Mapma3eka262/cyberctf-arena/main/deploy/quick_install.sh
-
-# Запустите установку
-chmod +x quick_install.sh
-sudo ./quick_install.sh
-```
-
-### Ручная установка
+### Установка
 1. Подготовка сервера
 ```bash
 cd /opt/
 sudo git clone https://github.com/Mapma3eka262/cyberctf-arena.git
-cd deploy
+cd ctf-arena/deploy
 sudo chmod +x *.sh
 sudo ./setup_server.sh
 ```
 
 2. Интеграция компонентов
 ```bash
-sudo -u cyberctf ./integrate_frontend_backend.sh
+sudo ./integrate_frontend_backend.sh
 ```
 
 3. Развертывание проекта
 ```bash
-sudo -u cyberctf ./deploy_project.sh
+sudo ./deploy_project.sh
 ```
 
 ### Docker установка
