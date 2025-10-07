@@ -37,13 +37,13 @@ check_root() {
     fi
 }
 
-activate_venv() {
-    if [ -f "$VENV_PATH/bin/activate" ]; then
-        source $VENV_PATH/bin/activate
-    else
-        log_error "Виртуальное окружение не найдено: $VENV_PATH"
-        exit 1
+check_service_exists() {
+    local service=$1
+    if [ ! -f "/etc/systemd/system/$service" ]; then
+        log_error "Сервис $service не найден. Сначала запустите интеграцию."
+        return 1
     fi
+    return 0
 }
 
 # Commands
@@ -51,47 +51,100 @@ case "$1" in
     "start")
         check_root "start"
         log_info "Запуск CyberCTF Arena..."
-        systemctl start nginx ctf-api ctf-celery ctf-celery-beat
-        log_success "Сервисы запущены"
+        
+        for service in ctf-api ctf-celery ctf-celery-beat nginx; do
+            if check_service_exists "$service.service"; then
+                systemctl start $service
+                log_success "Сервис $service запущен"
+            fi
+        done
         ;;
         
     "stop")
         check_root "stop"
         log_info "Остановка CyberCTF Arena..."
-        systemctl stop nginx ctf-api ctf-celery ctf-celery-beat
-        log_success "Сервисы остановлены"
+        
+        for service in ctf-api ctf-celery ctf-celery-beat nginx; do
+            if systemctl is-active --quiet $service 2>/dev/null; then
+                systemctl stop $service
+                log_success "Сервис $service остановлен"
+            fi
+        done
         ;;
         
     "restart")
         check_root "restart"
         log_info "Перезапуск CyberCTF Arena..."
-        systemctl restart nginx ctf-api ctf-celery ctf-celery-beat
-        log_success "Сервисы перезапущены"
+        
+        for service in ctf-api ctf-celery ctf-celery-beat nginx; do
+            if check_service_exists "$service.service"; then
+                systemctl restart $service
+                log_success "Сервис $service перезапущен"
+            fi
+        done
         ;;
         
     "status")
         log_info "Статус сервисов CyberCTF Arena:"
-        for service in nginx ctf-api ctf-celery ctf-celery-beat postgresql redis-server; do
-            if systemctl is-active --quiet $service; then
+        echo "=== Основные сервисы ==="
+        for service in nginx ctf-api ctf-celery ctf-celery-beat; do
+            if systemctl is-active --quiet $service 2>/dev/null; then
                 echo -e "  ${GREEN}✓${NC} $service: запущен"
             else
                 echo -e "  ${RED}✗${NC} $service: остановлен"
+            fi
+        done
+        
+        echo "=== Системные сервисы ==="
+        for service in postgresql redis-server fail2ban; do
+            if systemctl is-active --quiet $service; then
+                echo -e "  ${GREEN}✓${NC} $service: запущен"
+            else
+                echo -e "  ${YELLOW}⚠${NC} $service: остановлен"
             fi
         done
         ;;
         
     "logs")
         service=${2:-"ctf-api"}
+        if ! check_service_exists "$service.service"; then
+            exit 1
+        fi
         log_info "Логи сервиса $service:"
         journalctl -u $service -f --lines=50
+        ;;
+        
+    "setup-db")
+        check_root "setup-db"
+        log_info "Настройка базы данных..."
+        
+        cd $BACKEND_DIR
+        source $VENV_PATH/bin/activate
+        export PYTHONPATH="$BACKEND_DIR"
+        
+        python3 -c "
+import sys
+sys.path.append('$BACKEND_DIR')
+try:
+    from app.core.database import init_db
+    from app.core.config import settings
+    init_db()
+    print('✅ База данных инициализирована')
+except Exception as e:
+    print(f'❌ Ошибка: {e}')
+    sys.exit(1)
+        " || exit 1
         ;;
         
     "backup")
         check_root "backup"
         log_info "Создание бэкапа базы данных..."
         BACKUP_FILE="$PROJECT_DIR/backups/backup_$(date +%Y%m%d_%H%M%S).sql"
-        sudo -u postgres pg_dump ctfarena > $BACKUP_FILE
-        log_success "Бэкап создан: $BACKUP_FILE"
+        sudo -u postgres pg_dump ctfarena > $BACKUP_FILE 2>/dev/null || {
+            log_error "Не удалось создать бэкап. Проверьте доступ к PostgreSQL."
+            exit 1
+        }
+        log_success "Бэкап создан: $BACKUP_FILE ($(du -h $BACKUP_FILE | cut -f1))"
         ;;
         
     "restore")
@@ -178,26 +231,26 @@ case "$1" in
         ;;
         
     *)
-        echo "CyberCTF Arena Management Script"
+        echo "CyberCTF Arena Management Script для Ubuntu 24.04"
         echo ""
         echo "Использование: $0 {команда}"
         echo ""
         echo "Команды:"
         echo "  start           - Запуск всех сервисов"
-        echo "  stop            - Остановка всех сервисов"
+        echo "  stop            - Остановка всех сервисов" 
         echo "  restart         - Перезапуск всех сервисов"
         echo "  status          - Статус сервисов"
         echo "  logs [service]  - Просмотр логов сервиса"
+        echo "  setup-db        - Инициализация базы данных"
         echo "  backup          - Создание бэкапа БД"
         echo "  restore <file>  - Восстановление БД из файла"
         echo "  update          - Обновление приложения"
         echo "  monitor         - Мониторинг системы"
         echo "  cleanup         - Очистка системы"
-        echo "  quick-install   - Быстрая установка"
         echo ""
         echo "Примеры:"
         echo "  sudo $0 start"
-        echo "  sudo $0 logs ctf-api"
-        echo "  sudo $0 backup"
+        echo "  sudo $0 status"
+        echo "  sudo $0 setup-db"
         ;;
 esac
