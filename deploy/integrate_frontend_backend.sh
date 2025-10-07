@@ -51,27 +51,35 @@ fi
 
 # Инициализация базы данных
 echo "🗄️ Инициализация базы данных..."
-export PYTHONPATH="$BACKEND_DIR"
 
 # Проверка доступности PostgreSQL
 if ! systemctl is-active --quiet postgresql; then
     echo "❌ PostgreSQL не запущен"
-    exit 1
+    systemctl start postgresql
+    echo "✅ PostgreSQL запущен"
 fi
 
-python3 -c "
+# Используем специальный скрипт для инициализации БД
+if [ -f "init_db.py" ]; then
+    python3 init_db.py
+else
+    # Альтернативный метод
+    export PYTHONPATH="$BACKEND_DIR"
+    python3 -c "
 import sys
-import os
 sys.path.append('$BACKEND_DIR')
 try:
     from app.core.database import init_db
-    from app.core.config import settings
     init_db()
     print('✅ База данных инициализирована')
 except Exception as e:
     print(f'❌ Ошибка инициализации БД: {e}')
+    # Показываем детали ошибки для отладки
+    import traceback
+    traceback.print_exc()
     sys.exit(1)
-" || exit 1
+"
+fi
 
 # Настройка статических файлов
 echo "📁 Настройка статических файлов..."
@@ -170,11 +178,16 @@ chmod 644 /etc/systemd/system/ctf-*.service
 # Перезагрузка systemd
 systemctl daemon-reload
 
+# Включение сервисов
+systemctl enable ctf-api ctf-celery ctf-celery-beat
+
 echo "✅ Интеграция завершена!"
 echo ""
-echo "Сервисы созданы:"
+echo "Сервисы созданы и включены:"
 echo "  ctf-api.service"
 echo "  ctf-celery.service" 
 echo "  ctf-celery-beat.service"
 echo ""
-echo "Для запуска используйте: sudo systemctl start ctf-api ctf-celery ctf-celery-beat"
+echo "Для запуска используйте:"
+echo "  sudo systemctl start ctf-api ctf-celery ctf-celery-beat"
+echo "  sudo systemctl status ctf-api"
