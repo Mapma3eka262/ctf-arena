@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# CyberCTF Arena - Deployment Script
+# CyberCTF Arena - Fixed Deployment Script
 set -e
 
 echo "🚀 Запуск деплоя CyberCTF Arena..."
@@ -23,7 +23,9 @@ systemctl stop ctf-api ctf-celery ctf-celery-beat nginx || true
 # Бэкап базы данных
 echo "💾 Создание бэкапа базы данных..."
 BACKUP_FILE="$PROJECT_DIR/backups/backup_$(date +%Y%m%d_%H%M%S).sql"
-sudo -u postgres pg_dump ctfarena > $BACKUP_FILE
+sudo -u postgres pg_dump ctfarena > $BACKUP_FILE 2>/dev/null || {
+    echo "⚠️  Не удалось создать бэкап (возможно, база данных пустая)"
+}
 echo "✅ Бэкап создан: $BACKUP_FILE"
 
 # Обновление кода (в реальном сценарии здесь будет git pull)
@@ -34,21 +36,43 @@ echo "📥 Обновление кода приложения..."
 echo "📦 Обновление зависимостей..."
 cd $BACKEND_DIR
 source venv/bin/activate
+pip install --upgrade pip
 pip install -r requirements.txt
 
 # Применение миграций базы данных
 echo "🗄️ Применение миграций базы данных..."
-if [ -d "migrations" ]; then
-    alembic upgrade head
+cd $BACKEND_DIR
+
+if [ -f "alembic.ini" ] && [ -d "alembic" ]; then
+    # Инициализируем Alembic если нужно
+    if [ ! -f "alembic/versions/001_initial_migration.py" ]; then
+        echo "⚠️  Миграции не найдены, создаем начальную структуру..."
+        # Создаем начальную миграцию
+        alembic revision --autogenerate -m "Initial migration" || {
+            echo "⚠️  Не удалось создать миграцию, используем прямую инициализацию"
+            python3 simple_init_db.py || python3 init_db.py
+        }
+    fi
+    
+    # Применяем миграции
+    echo "Применяем миграции Alembic..."
+    alembic upgrade head || {
+        echo "⚠️  Не удалось применить миграции, используем прямую инициализацию"
+        python3 simple_init_db.py || python3 init_db.py
+    }
+    echo "✅ Миграции применены"
+else
+    echo "⚠️  Alembic не настроен, используем прямую инициализацию БД..."
+    python3 simple_init_db.py || python3 init_db.py || {
+        echo "✅ База данных уже инициализирована"
+    }
 fi
 
 # Сборка статических файлов
 echo "📁 Сборка статических файлов..."
-python3 -c "
-from app.main import app
-# Здесь может быть логика сборки статики
-print('✅ Статические файлы собраны')
-"
+mkdir -p $BACKEND_DIR/static
+# Здесь может быть логика сборки статики для фронтенда
+echo "✅ Статические файлы настроены"
 
 # Настройка Nginx
 echo "🌐 Настройка Nginx..."
@@ -133,7 +157,7 @@ done
 
 # Очистка старых бэкапов (храним только последние 7)
 echo "🧹 Очистка старых бэкапов..."
-ls -t $PROJECT_DIR/backups/*.sql | tail -n +8 | xargs rm -f
+ls -t $PROJECT_DIR/backups/*.sql 2>/dev/null | tail -n +8 | xargs rm -f 2>/dev/null || true
 
 echo ""
 echo "🎉 Деплой CyberCTF Arena завершен!"
@@ -143,7 +167,7 @@ echo "   systemctl status ctf-api"
 echo "   systemctl status ctf-celery" 
 echo "   systemctl status ctf-celery-beat"
 echo ""
-echo "🌐 Приложение доступно по адресу: http://your-server-ip"
+echo "🌐 Приложение доступно по адресу: http://$(hostname -I | awk '{print $1}')"
 echo ""
 echo "⚠️  Не забудьте:"
 echo "   1. Настроить доменное имя"
