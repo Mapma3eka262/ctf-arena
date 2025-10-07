@@ -1,23 +1,18 @@
-from sqlalchemy.ext.declarative import declarative_base
-
-Base = declarative_base()
-
-# Импорт всех моделей для правильной работы Alembic
-from .user import User
-from .team import Team
-from .challenge import Challenge
-from .submission import Submission
-from .service import Service
-from .invitation import TeamInvite
-from .competition import Competition
+# Backend models initialization
+from app.models.user import User
+from app.models.team import Team
+from app.models.challenge import Challenge
+from app.models.submission import Submission
+from app.models.service import Service
+from app.models.invitation import Invitation
+from app.models.competition import Competition
 
 __all__ = [
-    'Base',
     'User',
     'Team', 
     'Challenge',
     'Submission',
     'Service',
-    'TeamInvite',
+    'Invitation',
     'Competition'
 ]
