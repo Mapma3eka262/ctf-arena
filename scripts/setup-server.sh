@@ -205,7 +205,10 @@ EOF
 # Install frontend dependencies
 log "Installing frontend dependencies..."
 cd "$PROJECT_DIR/frontend"
-sudo -u "$PROJECT_USER" npm install
+sudo -u "$PROJECT_USER" npm install --no-audit --fund=false
+
+# Игнорируем npm предупреждения и уязвимости для production
+log "Frontend dependencies installed (warnings ignored for production)"
 
 # Create basic frontend structure
 sudo -u "$PROJECT_USER" mkdir -p "$PROJECT_DIR/frontend/src"/{components,pages,styles}
@@ -476,100 +479,42 @@ UPLOAD_DIR=$PROJECT_DIR/uploads
 MAX_FILE_SIZE=10485760
 EOF
 
-# Generate SSL certificate (if domain is set)
-# Generate SSL certificate (if domain is set and points to this server)
-if [ "$DOMAIN" != "ctf.example.com" ]; then
-    log "Testing domain resolution..."
-    if nslookup "$DOMAIN" > /dev/null 2>&1; then
-        log "Generating SSL certificate for $DOMAIN..."
-        certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos -m "$EMAIL" --redirect
-        
-        # Update Nginx config to use SSL
-        cat > "$PROJECT_DIR/nginx/ctf-platform-ssl.conf" << EOF
-server {
-    listen 80;
-    server_name $DOMAIN;
-    return 301 https://\$server_name\$request_uri;
-}
+# Test Nginx configuration with HTTP only first
+nginx -t
+systemctl start nginx
 
-server {
-    listen 443 ssl http2;
-    server_name $DOMAIN;
+# Generate SSL certificate only if domain resolves correctly
+if [ "$DOMAIN" != "ctf.example.com" ]; then
+    log "Testing domain resolution for $DOMAIN..."
     
-    ssl_certificate /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem;
+    # Check if domain resolves to this server's IP
+    DOMAIN_IP=$(dig +short "$DOMAIN" | head -1)
+    SERVER_IP=$(curl -s http://ipinfo.io/ip || hostname -I | awk '{print $1}')
     
-    # SSL configuration
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384;
-    ssl_prefer_server_ciphers off;
-    
-    # Security headers
-    add_header X-Frame-Options DENY;
-    add_header X-Content-Type-Options nosniff;
-    add_header X-XSS-Protection "1; mode=block";
-    
-    # Frontend
-    location / {
-        root $PROJECT_DIR/frontend/dist;
-        try_files \$uri \$uri/ /index.html;
-        expires 1h;
-        add_header Cache-Control "public, immutable";
-    }
-    
-    # API
-    location /api {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
+    if [ -n "$DOMAIN_IP" ] && [ "$DOMAIN_IP" = "$SERVER_IP" ]; then
+        log "Domain $DOMAIN correctly points to this server ($SERVER_IP)"
+        log "Generating SSL certificate for $DOMAIN..."
         
-        # Timeouts
-        proxy_connect_timeout 30s;
-        proxy_send_timeout 30s;
-        proxy_read_timeout 30s;
-    }
-    
-    # Static files
-    location /static {
-        alias $PROJECT_DIR/backend/static;
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
-    
-    # File uploads
-    location /uploads {
-        alias $PROJECT_DIR/uploads;
-        internal;
-    }
-    
-    # Security
-    location ~ /\. {
-        deny all;
-    }
-    
-    location ~ /(README|LICENSE|CHANGELOG) {
-        deny all;
-    }
-}
-EOF
-        
-        # Replace the config with SSL version
-        cp "$PROJECT_DIR/nginx/ctf-platform-ssl.conf" "$PROJECT_DIR/nginx/ctf-platform.conf"
-        ln -sf "$PROJECT_DIR/nginx/ctf-platform.conf" /etc/nginx/sites-available/ctf-platform
-        
-        # Test and reload Nginx
-        nginx -t
-        systemctl reload nginx
-        
+        if certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos -m "$EMAIL" --redirect; then
+            log "SSL certificate successfully generated"
+        else
+            warn "SSL certificate generation failed. Continuing with HTTP only."
+            warn "You can generate SSL later with: certbot --nginx -d $DOMAIN"
+        fi
     else
-        warn "Domain $DOMAIN does not resolve to this server. SSL certificate generation skipped."
-        warn "Please configure DNS first, then run: certbot --nginx -d $DOMAIN"
+        warn "Domain $DOMAIN does not resolve to this server."
+        warn "Current DNS: $DOMAIN -> $DOMAIN_IP"
+        warn "Server IP: $SERVER_IP"
+        warn "Please configure DNS A record for $DOMAIN to point to $SERVER_IP"
+        warn "SSL certificate generation skipped. You can add it later."
     fi
 else
-    warn "Please update the DOMAIN variable and configure DNS, then run: certbot --nginx -d your-domain.com"
+    warn "Default domain detected. Please set real DOMAIN in script configuration."
+    warn "SSL certificate generation skipped."
 fi
+
+# Ensure Nginx is running with current config
+systemctl reload nginx
 
 # Start and enable services
 log "Starting services..."
