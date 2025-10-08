@@ -303,48 +303,60 @@
             registerModal.style.display = 'none';
         });
         
-        registerForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const formData = new FormData(registerForm);
-            const data = {
-                team_name: formData.get('team_name'),
-                username: formData.get('username'),
-                email: formData.get('email'),
-                password: formData.get('password'),
-                password_confirm: formData.get('password_confirm')
-            };
-            
-            if (data.password !== data.password_confirm) {
-                showMessage('Пароли не совпадают', 'error');
-                return;
-            }
-            
-            try {
-                const response = await fetch(`${API_BASE}/auth/register`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(data)
-                });
-                
-                const result = await response.json();
-                
-                if (response.ok) {
-                    showMessage('Регистрация успешна! Проверьте вашу почту для подтверждения.', 'success');
-                    registerForm.reset();
-                    setTimeout(() => {
-                        registerModal.style.display = 'none';
-                        window.location.href = 'lk.html';
-                    }, 3000);
-                } else {
-                    showMessage(result.detail || 'Ошибка регистрации', 'error');
-                }
-            } catch (error) {
-                showMessage('Ошибка соединения', 'error');
-            }
-        });
+        // Обновленная функция регистрации
+		registerForm.addEventListener('submit', async (e) => {
+			e.preventDefault();
+			
+			const formData = new FormData(registerForm);
+			const data = {
+				team_name: formData.get('team_name'),
+				username: formData.get('username'),
+				email: formData.get('email'),
+				password: formData.get('password'),
+				password_confirm: formData.get('password_confirm')
+			};
+			
+			// Валидация
+			if (data.password !== data.password_confirm) {
+				showMessage('Пароли не совпадают', 'error');
+				return;
+			}
+			
+			if (data.password.length < 6) {
+				showMessage('Пароль должен содержать минимум 6 символов', 'error');
+				return;
+			}
+			
+			if (data.username.length < 3) {
+				showMessage('Логин должен содержать минимум 3 символа', 'error');
+				return;
+			}
+			
+			try {
+				const response = await fetch(`${API_BASE}/auth/register`, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify(data)
+				});
+				
+				const result = await response.json();
+				
+				if (response.ok) {
+					showMessage(result.message || 'Регистрация успешна! Проверьте вашу почту для подтверждения.', 'success');
+					registerForm.reset();
+					setTimeout(() => {
+						registerModal.style.display = 'none';
+						window.location.href = 'lk.html';
+					}, 3000);
+				} else {
+					showMessage(result.detail || 'Ошибка регистрации', 'error');
+				}
+			} catch (error) {
+				showMessage('Ошибка соединения: ' + error.message, 'error');
+			}
+		});
         
         function showMessage(text, type) {
             registerMessage.textContent = text;
