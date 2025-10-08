@@ -41,19 +41,53 @@ source venv/bin/activate
 echo "📦 Установка Python зависимостей (исправленные версии)..."
 pip install --upgrade pip
 
-# Устанавливаем bcrypt отдельно с правильными флагами
+# Устанавливаем проблемные зависимости отдельно
+echo "🔧 Установка проблемных зависимостей..."
 pip install "bcrypt==4.1.1" --no-build-isolation
+pip install "dnspython>=2.0.0"
+pip install "email-validator==2.1.0"
 
-if [ -f "requirements.txt" ]; then
-    # Устанавливаем остальные зависимости
-    pip install -r requirements.txt --no-deps
-    # Затем устанавливаем зависимости без версий для разрешения конфликтов
-    pip install fastapi uvicorn sqlalchemy alembic psycopg2-binary python-jose requests python-dotenv celery redis
+# Создаем исправленный requirements.txt
+cat > requirements_fixed.txt << 'EOF'
+fastapi==0.104.1
+uvicorn==0.24.0
+sqlalchemy==2.0.23
+alembic==1.12.1
+psycopg2-binary==2.9.9
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.6
+python-dateutil==2.8.2
+pydantic==2.5.0
+pydantic-settings==2.1.0
+celery==5.3.4
+redis==5.0.1
+requests==2.31.0
+python-dotenv==1.0.0
+aiofiles==23.2.1
+jinja2==3.1.2
+pillow==10.1.0
+cryptography==41.0.7
+dnspython>=2.0.0
+EOF
+
+# Устанавливаем исправленные зависимости
+if [ -f "requirements_fixed.txt" ]; then
+    pip install -r requirements_fixed.txt
     echo "✅ Зависимости установлены"
 else
-    echo "❌ Файл requirements.txt не найден"
-    exit 1
+    # Альтернативная установка если файла нет
+    pip install fastapi uvicorn sqlalchemy alembic psycopg2-binary
+    pip install python-jose passlib python-multipart python-dateutil
+    pip install pydantic pydantic-settings celery redis requests
+    pip install python-dotenv aiofiles jinja2 pillow cryptography
+    pip install dnspython email-validator
+    echo "✅ Зависимости установлены (альтернативный метод)"
 fi
+
+# Проверяем установку зависимостей
+echo "🔍 Проверка установленных пакетов..."
+pip list | grep -E "(fastapi|sqlalchemy|psycopg2|celery|redis)"
 
 # Инициализация базы данных
 echo "🗄️ Инициализация базы данных..."
@@ -67,22 +101,25 @@ fi
 
 # Используем простой скрипт для инициализации БД
 if [ -f "simple_init_db.py" ]; then
+    echo "🚀 Запуск simple_init_db.py..."
     python3 simple_init_db.py
 else
-    # Альтернативный метод с обработкой ошибок bcrypt
+    # Альтернативный метод с обработкой ошибок
     echo "⚠️  Используем альтернативный метод инициализации..."
     export PYTHONPATH="$BACKEND_DIR"
-    python3 -c "
+    
+    # Создаем простой скрипт инициализации
+    cat > init_db_simple.py << 'PYTHON_EOF'
+#!/usr/bin/env python3
 import sys
 import os
-sys.path.append('$BACKEND_DIR')
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 try:
-    # Пытаемся использовать простую инициализацию
     from sqlalchemy import create_engine, text
     from app.core.config import settings
     
-    print('Создание таблиц базы данных...')
+    print('🔧 Создание таблиц базы данных...')
     engine = create_engine(settings.DATABASE_URL)
     
     # Простая проверка подключения
@@ -95,11 +132,45 @@ try:
     Base.metadata.create_all(bind=engine)
     print('✅ Таблицы базы данных созданы')
     
+    # Создаем тестового пользователя если нужно
+    from app.models.user import User
+    from app.models.team import Team
+    from app.core.security import get_password_hash
+    from sqlalchemy.orm import Session
+    
+    with Session(engine) as session:
+        # Проверяем, есть ли уже пользователи
+        existing_user = session.query(User).first()
+        if not existing_user:
+            print('👤 Создание тестового пользователя...')
+            team = Team(name="Test Team")
+            session.add(team)
+            session.flush()
+            
+            user = User(
+                username="testuser",
+                email="test@example.com",
+                hashed_password=get_password_hash("testpassword"),
+                is_captain=True,
+                team_id=team.id
+            )
+            session.add(user)
+            session.commit()
+            print('✅ Тестовый пользователь создан')
+        else:
+            print('ℹ️  Пользователи уже существуют')
+    
 except Exception as e:
     print(f'❌ Ошибка инициализации БД: {e}')
-    print('Попробуйте запустить simple_init_db.py вручную')
+    import traceback
+    traceback.print_exc()
     sys.exit(1)
-"
+
+print('🎉 Инициализация базы данных завершена успешно!')
+PYTHON_EOF
+
+    python3 init_db_simple.py
+    rm -f init_db_simple.py
 fi
 
 # Настройка статических файлов
