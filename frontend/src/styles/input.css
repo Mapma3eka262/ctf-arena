@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .btn-primary {
+    @apply bg-ctf-primary text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors;
+  }
+  
+  .btn-secondary {
+    @apply bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-gray-700 transition-colors;
+  }
+  
+  .btn-success {
+    @apply bg-ctf-success text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors;
+  }
+  
+  .challenge-card {
+    @apply bg-white rounded-lg shadow-md p-6 border-l-4;
+  }
+  
+  .challenge-easy {
+    @apply border-green-500;
+  }
+  
+  .challenge-medium {
+    @apply border-yellow-500;
+  }
+  
+  .challenge-hard {
+    @apply border-orange-500;
+  }
+  
+  .challenge-insane {
+    @apply border-red-500;
+  }
+}
