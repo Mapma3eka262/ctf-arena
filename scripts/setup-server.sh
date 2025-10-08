@@ -211,32 +211,12 @@ sudo -u "$PROJECT_USER" npm install
 sudo -u "$PROJECT_USER" mkdir -p "$PROJECT_DIR/frontend/src"/{components,pages,styles}
 
 # Create Nginx configuration
+# Create Nginx configuration with fallback for missing SSL
 log "Configuring Nginx..."
 cat > "$PROJECT_DIR/nginx/ctf-platform.conf" << EOF
 server {
     listen 80;
     server_name $DOMAIN;
-    
-    # Redirect to HTTPS
-    return 301 https://\$server_name\$request_uri;
-}
-
-server {
-    listen 443 ssl http2;
-    server_name $DOMAIN;
-    
-    ssl_certificate /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem;
-    
-    # SSL configuration
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384;
-    ssl_prefer_server_ciphers off;
-    
-    # Security headers
-    add_header X-Frame-Options DENY;
-    add_header X-Content-Type-Options nosniff;
-    add_header X-XSS-Protection "1; mode=block";
     
     # Frontend
     location / {
@@ -497,11 +477,98 @@ MAX_FILE_SIZE=10485760
 EOF
 
 # Generate SSL certificate (if domain is set)
+# Generate SSL certificate (if domain is set and points to this server)
 if [ "$DOMAIN" != "ctf.example.com" ]; then
-    log "Generating SSL certificate for $DOMAIN..."
-    certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos -m "$EMAIL" --redirect
+    log "Testing domain resolution..."
+    if nslookup "$DOMAIN" > /dev/null 2>&1; then
+        log "Generating SSL certificate for $DOMAIN..."
+        certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos -m "$EMAIL" --redirect
+        
+        # Update Nginx config to use SSL
+        cat > "$PROJECT_DIR/nginx/ctf-platform-ssl.conf" << EOF
+server {
+    listen 80;
+    server_name $DOMAIN;
+    return 301 https://\$server_name\$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name $DOMAIN;
+    
+    ssl_certificate /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem;
+    
+    # SSL configuration
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+    
+    # Security headers
+    add_header X-Frame-Options DENY;
+    add_header X-Content-Type-Options nosniff;
+    add_header X-XSS-Protection "1; mode=block";
+    
+    # Frontend
+    location / {
+        root $PROJECT_DIR/frontend/dist;
+        try_files \$uri \$uri/ /index.html;
+        expires 1h;
+        add_header Cache-Control "public, immutable";
+    }
+    
+    # API
+    location /api {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        
+        # Timeouts
+        proxy_connect_timeout 30s;
+        proxy_send_timeout 30s;
+        proxy_read_timeout 30s;
+    }
+    
+    # Static files
+    location /static {
+        alias $PROJECT_DIR/backend/static;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+    
+    # File uploads
+    location /uploads {
+        alias $PROJECT_DIR/uploads;
+        internal;
+    }
+    
+    # Security
+    location ~ /\. {
+        deny all;
+    }
+    
+    location ~ /(README|LICENSE|CHANGELOG) {
+        deny all;
+    }
+}
+EOF
+        
+        # Replace the config with SSL version
+        cp "$PROJECT_DIR/nginx/ctf-platform-ssl.conf" "$PROJECT_DIR/nginx/ctf-platform.conf"
+        ln -sf "$PROJECT_DIR/nginx/ctf-platform.conf" /etc/nginx/sites-available/ctf-platform
+        
+        # Test and reload Nginx
+        nginx -t
+        systemctl reload nginx
+        
+    else
+        warn "Domain $DOMAIN does not resolve to this server. SSL certificate generation skipped."
+        warn "Please configure DNS first, then run: certbot --nginx -d $DOMAIN"
+    fi
 else
-    warn "Please update the DOMAIN variable and run: certbot --nginx -d your-domain.com"
+    warn "Please update the DOMAIN variable and configure DNS, then run: certbot --nginx -d your-domain.com"
 fi
 
 # Start and enable services
