@@ -191,29 +191,31 @@
         }
         
         async function loadChallenges() {
-            try {
-                const response = await fetch(`${API_BASE}/challenges`, {
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    }
-                });
-                
-                if (response.ok) {
-                    const challenges = await response.json();
-                    const select = document.getElementById('challenge-select');
-                    select.innerHTML = '<option value="">Выберите задание...</option>';
-                    
-                    challenges.forEach(challenge => {
-                        const option = document.createElement('option');
-                        option.value = challenge.id;
-                        option.textContent = `${challenge.category}-${challenge.points}: ${challenge.title}`;
-                        select.appendChild(option);
-                    });
-                }
-            } catch (error) {
-                console.error('Error loading challenges:', error);
-            }
-        }
+			try {
+				const response = await fetch(`${API_BASE}/challenges`, {
+					headers: {
+						'Authorization': `Bearer ${authToken}`
+					}
+				});
+				
+				if (response.ok) {
+					const challenges = await response.json();
+					const select = document.getElementById('challenge-select');
+					select.innerHTML = '<option value="">Выберите задание...</option>';
+					
+					challenges.forEach(challenge => {
+						const option = document.createElement('option');
+						option.value = challenge.id;
+						option.textContent = `${challenge.category}-${challenge.points}: ${challenge.title} ${challenge.is_solved ? '✓' : ''}`;
+						option.disabled = challenge.is_solved;
+						select.appendChild(option);
+					});
+				}
+			} catch (error) {
+				console.error('Error loading challenges:', error);
+				showFlagResult('Ошибка загрузки заданий', 'error');
+			}
+		}
         
         async function loadServices() {
             try {
@@ -257,56 +259,64 @@
             }
         }
         
-        async function submitFlag() {
-            const challengeSelect = document.getElementById('challenge-select');
-            const flagInput = document.getElementById('flag-input');
-            const resultDiv = document.getElementById('flag-result');
-            
-            const challengeId = challengeSelect.value;
-            const flag = flagInput.value.trim();
-            
-            if (!challengeId || !flag) {
-                showFlagResult('Выберите задание и введите флаг', 'error');
-                return;
-            }
-            
-            if (!flag.startsWith('CTF{') || !flag.endsWith('}')) {
-                showFlagResult('Неверный формат флага. Должен быть CTF{...}', 'error');
-                return;
-            }
-            
-            try {
-                const response = await fetch(`${API_BASE}/submissions`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`
-                    },
-                    body: JSON.stringify({
-                        challenge_id: parseInt(challengeId),
-                        flag: flag
-                    })
-                });
-                
-                const result = await response.json();
-                
-                if (response.ok) {
-                    const message = result.is_first_blood ? 
-                        `🎉 Первая кровь! ${result.message} +${result.points} очков` : 
-                        `${result.message} +${result.points} очков`;
-                    
-                    showFlagResult(message, 'success');
-                    flagInput.value = '';
-                    loadTeamData();
-                    loadActivityLog();
-                } else {
-                    showFlagResult(result.detail || 'Ошибка отправки', 'error');
-                }
-            } catch (error) {
-                showFlagResult('Ошибка соединения', 'error');
-            }
-        }
-        
+		// Обновленная функция отправки флага
+		async function submitFlag() {
+			const challengeSelect = document.getElementById('challenge-select');
+			const flagInput = document.getElementById('flag-input');
+			const resultDiv = document.getElementById('flag-result');
+			
+			const challengeId = challengeSelect.value;
+			const flag = flagInput.value.trim();
+			
+			if (!challengeId || !flag) {
+				showFlagResult('Выберите задание и введите флаг', 'error');
+				return;
+			}
+			
+			if (!flag.startsWith('CTF{') || !flag.endsWith('}')) {
+				showFlagResult('Неверный формат флага. Должен быть CTF{...}', 'error');
+				return;
+			}
+			
+			try {
+				const response = await fetch(`${API_BASE}/submissions`, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						'Authorization': `Bearer ${authToken}`
+					},
+					body: JSON.stringify({
+						challenge_id: parseInt(challengeId),
+						flag: flag
+					})
+				});
+				
+				const result = await response.json();
+				
+				if (response.ok) {
+					let message = result.message;
+					if (result.status === 'accepted') {
+						message += ` +${result.points} очков`;
+						if (result.is_first_blood) {
+							message += ' 🩸 Первая кровь!';
+						}
+					}
+					
+					showFlagResult(message, result.status === 'accepted' ? 'success' : 'error');
+					flagInput.value = '';
+					
+					// Обновляем данные
+					loadTeamData();
+					loadChallenges();
+					loadActivityLog();
+				} else {
+					showFlagResult(result.detail || 'Ошибка отправки', 'error');
+				}
+			} catch (error) {
+				showFlagResult('Ошибка соединения', 'error');
+			}
+		}        
+		
         function showFlagResult(message, type) {
             const resultDiv = document.getElementById('flag-result');
             resultDiv.textContent = message;
@@ -320,34 +330,44 @@
             }, 5000);
         }
         
-        async function loadActivityLog() {
-            try {
-                const response = await fetch(`${API_BASE}/submissions/team?limit=10`, {
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    }
-                });
-                
-                if (response.ok) {
-                    const submissions = await response.json();
-                    const logContainer = document.getElementById('activity-log');
-                    logContainer.innerHTML = '';
-                    
-                    submissions.forEach(submission => {
-                        const time = new Date(submission.submitted_at).toLocaleTimeString();
-                        const status = submission.status === 'accepted' ? 'принят' : 
-                                      submission.status === 'rejected' ? 'отклонен' : 'ожидание';
-                        const points = submission.points_awarded > 0 ? ` (+${submission.points_awarded})` : '';
-                        
-                        const logEntry = document.createElement('p');
-                        logEntry.innerHTML = `> [${time}] Флаг ${status}${points} ${submission.is_first_blood ? '🎉' : ''}`;
-                        logContainer.appendChild(logEntry);
-                    });
-                }
-            } catch (error) {
-                console.error('Error loading activity log:', error);
-            }
-        }
+        // Обновленная функция загрузки активности
+		async function loadActivityLog() {
+			try {
+				const response = await fetch(`${API_BASE}/submissions/team?limit=10`, {
+					headers: {
+						'Authorization': `Bearer ${authToken}`
+					}
+				});
+				
+				if (response.ok) {
+					const submissions = await response.json();
+					const logContainer = document.getElementById('activity-log');
+					logContainer.innerHTML = '';
+					
+					if (submissions.length === 0) {
+						logContainer.innerHTML = '<p class="text-gray-500">Нет отправок</p>';
+						return;
+					}
+					
+					submissions.forEach(submission => {
+						const time = new Date(submission.submitted_at).toLocaleTimeString();
+						const status = submission.status === 'accepted' ? 'принят' : 
+									  submission.status === 'rejected' ? 'отклонен' : 'ожидание';
+						const statusClass = submission.status === 'accepted' ? 'text-green-500' : 
+										  submission.status === 'rejected' ? 'text-red-500' : 'text-yellow-500';
+						const points = submission.points_awarded > 0 ? ` (+${submission.points_awarded})` : '';
+						const firstBlood = submission.is_first_blood ? ' 🩸' : '';
+						
+						const logEntry = document.createElement('p');
+						logEntry.className = 'mb-2';
+						logEntry.innerHTML = `[${time}] <span class="${statusClass}">${status}${points}${firstBlood}</span> - ${submission.challenge_title}`;
+						logContainer.appendChild(logEntry);
+					});
+				}
+			} catch (error) {
+				console.error('Error loading activity log:', error);
+			}
+		}
         
         function startCountdown() {
             // Для демо - устанавливаем время окончания на 2 часа вперед
