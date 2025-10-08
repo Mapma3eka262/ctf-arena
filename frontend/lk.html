@@ -244,263 +244,190 @@
         </div>
     </div>
 
-    <script>
-        feather.replace();
-        
-        const API_BASE = 'http://localhost:8000/api';
-        let authToken = localStorage.getItem('authToken');
-        
-        // Проверка авторизации при загрузке
-        if (authToken) {
-            checkAuth();
-        }
-        
-        // Логин
-        document.getElementById('login-form-element').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-            
-            try {
-                const response = await fetch(`${API_BASE}/auth/login`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        username: username,
-                        password: password
-                    })
-                });
-                
-                const result = await response.json();
-                
-                if (response.ok) {
-                    localStorage.setItem('authToken', result.access_token);
-                    localStorage.setItem('refreshToken', result.refresh_token);
-                    authToken = result.access_token;
-                    showDashboard();
-                    loadUserData();
-                } else {
-                    showLoginMessage(result.detail || 'Ошибка входа', 'error');
-                }
-            } catch (error) {
-                showLoginMessage('Ошибка соединения', 'error');
-            }
-        });
-        
-        // Выход
-        document.getElementById('logout-btn').addEventListener('click', () => {
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('refreshToken');
-            authToken = null;
-            showLoginForm();
-        });
-        
-        // Приглашение участника
-        document.getElementById('invite-member').addEventListener('click', () => {
-            document.getElementById('invite-modal').style.display = 'block';
-        });
-        
-        document.querySelectorAll('.close-modal').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.getElementById('invite-modal').style.display = 'none';
-            });
-        });
-        
-        document.getElementById('invite-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('invite-email').value;
-            
-            try {
-                const response = await fetch(`${API_BASE}/teams/invites`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`
-                    },
-                    body: JSON.stringify({ email: email })
-                });
-                
-                if (response.ok) {
-                    showInviteMessage('Приглашение отправлено', 'success');
-                    document.getElementById('invite-form').reset();
-                } else {
-                    const result = await response.json();
-                    showInviteMessage(result.detail || 'Ошибка отправки приглашения', 'error');
-                }
-            } catch (error) {
-                showInviteMessage('Ошибка соединения', 'error');
-            }
-        });
-        
-        // Функции
-        async function checkAuth() {
-            try {
-                const response = await fetch(`${API_BASE}/users/me`, {
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    }
-                });
-                
-                if (response.ok) {
-                    showDashboard();
-                    loadUserData();
-                } else {
-                    showLoginForm();
-                }
-            } catch (error) {
-                showLoginForm();
-            }
-        }
-        
-        function showLoginForm() {
-            document.getElementById('login-form').classList.remove('hidden');
-            document.getElementById('dashboard').classList.add('hidden');
-        }
-        
-        function showDashboard() {
-            document.getElementById('login-form').classList.add('hidden');
-            document.getElementById('dashboard').classList.remove('hidden');
-        }
-        
-        async function loadUserData() {
-            try {
-                // Загрузка данных пользователя
-                const userResponse = await fetch(`${API_BASE}/users/me`, {
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    }
-                });
-                
-                if (userResponse.ok) {
-                    const userData = await userResponse.json();
-                    document.getElementById('username-display').textContent = userData.username;
-                    document.getElementById('role-display').textContent = userData.role;
-                }
-                
-                // Загрузка данных команды
-                const teamResponse = await fetch(`${API_BASE}/users/me/team`, {
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    }
-                });
-                
-                if (teamResponse.ok) {
-                    const teamData = await teamResponse.json();
-                    document.getElementById('team-name').textContent = teamData.name;
-                    document.getElementById('team-score').textContent = teamData.score;
-                    loadTeamMembers(teamData.id);
-                }
-                
-                // Загрузка статистики отправок
-                const statsResponse = await fetch(`${API_BASE}/submissions/stats`, {
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    }
-                });
-                
-                if (statsResponse.ok) {
-                    const stats = await statsResponse.json();
-                    document.getElementById('total-submissions').textContent = stats.total;
-                    document.getElementById('accepted-submissions').textContent = stats.accepted;
-                    document.getElementById('rejected-submissions').textContent = stats.rejected;
-                    document.getElementById('success-rate').textContent = `${stats.success_rate.toFixed(1)}%`;
-                }
-                
-                // Загрузка истории отправок
-                const submissionsResponse = await fetch(`${API_BASE}/submissions/team?limit=10`, {
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    }
-                });
-                
-                if (submissionsResponse.ok) {
-                    const submissions = await submissionsResponse.json();
-                    displaySubmissions(submissions);
-                }
-                
-            } catch (error) {
-                console.error('Error loading user data:', error);
-            }
-        }
-        
-        async function loadTeamMembers(teamId) {
-            try {
-                const response = await fetch(`${API_BASE}/teams/my`, {
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    }
-                });
-                
-                if (response.ok) {
-                    const teamData = await response.json();
-                    const membersTbody = document.getElementById('team-members');
-                    membersTbody.innerHTML = '';
-                    
-                    teamData.members.forEach(member => {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td>${member.username}</td>
-                            <td>${member.email}</td>
-                            <td>${member.role === 'captain' ? 'Капитан' : 'Участник'}</td>
-                            <td>${member.is_active ? 'Активен' : 'Неактивен'}</td>
-                        `;
-                        membersTbody.appendChild(row);
-                    });
-                }
-            } catch (error) {
-                console.error('Error loading team members:', error);
-            }
-        }
-        
-        function displaySubmissions(submissions) {
-            const tbody = document.getElementById('submissions-history');
-            tbody.innerHTML = '';
-            
-            submissions.forEach(submission => {
-                const row = document.createElement('tr');
-                const date = new Date(submission.submitted_at).toLocaleTimeString();
-                const statusClass = `status-${submission.status}`;
-                
-                row.innerHTML = `
-                    <td>${date}</td>
-                    <td>${submission.challenge_title || 'Unknown'}</td>
-                    <td>${submission.flag.substring(0, 10)}...</td>
-                    <td class="${statusClass}">${getStatusText(submission.status)}</td>
-                    <td>${submission.points_awarded || 0}</td>
-                `;
-                tbody.appendChild(row);
-            });
-        }
-        
-        function getStatusText(status) {
-            const statusMap = {
-                'accepted': 'Принято',
-                'rejected': 'Отклонено',
-                'pending': 'Ожидание'
-            };
-            return statusMap[status] || status;
-        }
-        
-        function showLoginMessage(text, type) {
-            const messageDiv = document.getElementById('login-message');
-            messageDiv.textContent = text;
-            messageDiv.className = `mt-4 p-2 rounded ${
-                type === 'success' ? 'bg-green-600' : 'bg-red-600'
-            }`;
-            messageDiv.classList.remove('hidden');
-        }
-        
-        function showInviteMessage(text, type) {
-            const messageDiv = document.getElementById('invite-message');
-            messageDiv.textContent = text;
-            messageDiv.className = `mt-4 p-2 rounded ${
-                type === 'success' ? 'bg-green-600' : 'bg-red-600'
-            }`;
-            messageDiv.classList.remove('hidden');
-        }
-    </script>
+	<script>
+	feather.replace();
+
+	const API_BASE = 'http://localhost:8000/api';
+	let authToken = localStorage.getItem('authToken');
+
+	// Проверка авторизации при загрузке
+	if (authToken) {
+		checkAuth();
+	}
+
+	// Логин - обновленная функция
+	document.getElementById('login-form-element').addEventListener('submit', async (e) => {
+		e.preventDefault();
+		
+		const username = document.getElementById('username').value;
+		const password = document.getElementById('password').value;
+		
+		try {
+			const formData = new URLSearchParams();
+			formData.append('username', username);
+			formData.append('password', password);
+			
+			const response = await fetch(`${API_BASE}/auth/login`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/x-www-form-urlencoded',
+				},
+				body: formData
+			});
+			
+			const result = await response.json();
+			
+			if (response.ok) {
+				localStorage.setItem('authToken', result.access_token);
+				authToken = result.access_token;
+				showDashboard();
+				loadUserData();
+			} else {
+				showLoginMessage(result.detail || 'Ошибка входа', 'error');
+			}
+		} catch (error) {
+			showLoginMessage('Ошибка соединения: ' + error.message, 'error');
+		}
+	});
+
+	// Обновленная функция проверки авторизации
+	async function checkAuth() {
+		if (!authToken) {
+			showLoginForm();
+			return;
+		}
+		
+		try {
+			const response = await fetch(`${API_BASE}/users/me`, {
+				headers: {
+					'Authorization': `Bearer ${authToken}`
+				}
+			});
+			
+			if (response.ok) {
+				showDashboard();
+				loadUserData();
+			} else {
+				localStorage.removeItem('authToken');
+				showLoginForm();
+			}
+		} catch (error) {
+			console.error('Auth check error:', error);
+			showLoginForm();
+		}
+	}
+
+	// Обновленная функция загрузки данных пользователя
+	async function loadUserData() {
+		try {
+			// Загрузка данных пользователя
+			const userResponse = await fetch(`${API_BASE}/users/me`, {
+				headers: {
+					'Authorization': `Bearer ${authToken}`
+				}
+			});
+			
+			if (userResponse.ok) {
+				const userData = await userResponse.json();
+				document.getElementById('username-display').textContent = userData.username;
+				document.getElementById('role-display').textContent = userData.is_admin ? 'Администратор' : 
+					userData.is_captain ? 'Капитан' : 'Участник';
+			} else {
+				throw new Error('Failed to load user data');
+			}
+			
+			// Загрузка данных команды
+			const teamResponse = await fetch(`${API_BASE}/users/me/team`, {
+				headers: {
+					'Authorization': `Bearer ${authToken}`
+				}
+			});
+			
+			if (teamResponse.ok) {
+				const teamData = await teamResponse.json();
+				document.getElementById('team-name').textContent = teamData.name;
+				document.getElementById('team-score').textContent = teamData.score;
+				
+				// Отображаем участников команды
+				const membersTbody = document.getElementById('team-members');
+				membersTbody.innerHTML = '';
+				
+				teamData.members.forEach(member => {
+					const row = document.createElement('tr');
+					row.innerHTML = `
+						<td>${member.username}</td>
+						<td>${member.email}</td>
+						<td>${member.role === 'captain' ? 'Капитан' : 'Участник'}</td>
+						<td>${member.is_active ? 'Активен' : 'Неактивен'}</td>
+					`;
+					membersTbody.appendChild(row);
+				});
+			} else if (teamResponse.status !== 404) {
+				throw new Error('Failed to load team data');
+			}
+			
+			// Загрузка статистики отправок
+			const statsResponse = await fetch(`${API_BASE}/submissions/stats`, {
+				headers: {
+					'Authorization': `Bearer ${authToken}`
+				}
+			});
+			
+			if (statsResponse.ok) {
+				const stats = await statsResponse.json();
+				document.getElementById('total-submissions').textContent = stats.total;
+				document.getElementById('accepted-submissions').textContent = stats.accepted;
+				document.getElementById('rejected-submissions').textContent = stats.rejected;
+				document.getElementById('success-rate').textContent = `${stats.success_rate.toFixed(1)}%`;
+			}
+			
+			// Загрузка истории отправок
+			const submissionsResponse = await fetch(`${API_BASE}/submissions/team?limit=10`, {
+				headers: {
+					'Authorization': `Bearer ${authToken}`
+				}
+			});
+			
+			if (submissionsResponse.ok) {
+				const submissions = await submissionsResponse.json();
+				displaySubmissions(submissions);
+			}
+			
+		} catch (error) {
+			console.error('Error loading user data:', error);
+			showLoginMessage('Ошибка загрузки данных', 'error');
+		}
+	}
+
+	// Обновленная функция отправки приглашения
+	document.getElementById('invite-form').addEventListener('submit', async (e) => {
+		e.preventDefault();
+		const email = document.getElementById('invite-email').value;
+		
+		try {
+			const response = await fetch(`${API_BASE}/teams/invites`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'Authorization': `Bearer ${authToken}`
+				},
+				body: JSON.stringify({ email: email })
+			});
+			
+			if (response.ok) {
+				showInviteMessage('Приглашение отправлено на ' + email, 'success');
+				document.getElementById('invite-form').reset();
+				setTimeout(() => {
+					document.getElementById('invite-modal').style.display = 'none';
+				}, 2000);
+			} else {
+				const result = await response.json();
+				showInviteMessage(result.detail || 'Ошибка отправки приглашения', 'error');
+			}
+		} catch (error) {
+			showInviteMessage('Ошибка соединения', 'error');
+		}
+	});
+	</script>
 </body>
 </html>
