@@ -126,7 +126,7 @@ cyberctf-arena/
 1. Подготовка сервера
 ```bash
 cd /opt/
-sudo git clone https://github.com/Mapma3eka262/cyberctf-arena.git
+sudo git clone https://github.com/Mapma3eka262/ctf-arena.git
 cd ctf-arena/deploy
 sudo chmod +x *.sh
 sudo ./setup_server.sh
