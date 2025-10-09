@@ -527,7 +527,8 @@ systemctl start ctf-api ctf-celery ctf-celery-beat
 
 # Create initial database tables (if backend code is available)
 log "Setting up initial database..."
-if [ -f "$PROJECT_DIR/backend/app/main.py" ]; then
+if [ -f "$PROJECT_DIR/backend/app/models/__init__.py" ] && [ -f "$PROJECT_DIR/backend/app/core/database.py" ]; then
+    log "Creating database tables..."
     sudo -u "$PROJECT_USER" "$PROJECT_DIR/venv/bin/python" -c "
 import sys
 sys.path.append('$PROJECT_DIR/backend')
@@ -537,7 +538,9 @@ Base.metadata.create_all(bind=engine)
 print('Database tables created successfully')
 "
 else
-    warn "Backend code not found. Please deploy your application code to $PROJECT_DIR/backend"
+    warn "Backend models not found. Database tables will be created when you deploy your application."
+    warn "You can create them later with:"
+    warn "cd $PROJECT_DIR/backend && source ../venv/bin/activate && python -c 'from app.core.database import engine; from app.models import Base; Base.metadata.create_all(bind=engine)'"
 fi
 
 # Print completion message
