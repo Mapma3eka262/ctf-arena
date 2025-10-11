@@ -8,7 +8,8 @@ import re
 from app.core.config import settings
 
 # Контекст для хеширования паролей
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+try:
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 except Exception as e:
     # Fallback на прямую работу с bcrypt если passlib не работает
     import bcrypt
