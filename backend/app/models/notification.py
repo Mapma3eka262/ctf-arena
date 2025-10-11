@@ -2,6 +2,7 @@
 
 from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, JSON
 from sqlalchemy.sql import func
+from typing import Dict, Any
 from app.core.database import Base
 
 class Notification(Base):
