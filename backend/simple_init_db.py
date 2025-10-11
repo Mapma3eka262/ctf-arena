@@ -182,8 +182,6 @@ def create_test_data(conn):
             RETURNING id
         """))
         team_id = result.fetchone()[0]
-        
-        # backend/simple_init_db.py (продолжение)
 
         # Создаем тестового пользователя (пароль: admin123)
         hashed_password = bcrypt.hashpw(b"admin123", bcrypt.gensalt()).decode('utf-8')
