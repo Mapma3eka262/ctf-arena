@@ -1,40 +1,57 @@
 # backend/app/models/dynamic_challenge.py
-from sqlalchemy import Column, Integer, String, Text, JSON, DateTime, ForeignKey, Boolean
+
+from sqlalchemy import Column, Integer, String, DateTime, Text, Boolean, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+
 from app.core.database import Base
 
 class DynamicChallenge(Base):
-    """Модель для динамических заданий с изолированными инстансами"""
     __tablename__ = "dynamic_challenges"
 
-    id = Column(Integer, ForeignKey('challenges.id'), primary_key=True)
-    docker_image = Column(String(255), nullable=False)
-    instance_config = Column(JSON, nullable=False)  # Конфигурация Docker
-    deployment_script = Column(Text)  # Скрипт развертывания
-    reset_interval = Column(Integer, default=3600)  # Интервал сброса в секундах
-    max_instances = Column(Integer, default=50)  # Максимальное количество инстансов
-    resource_limits = Column(JSON)  # Ограничения ресурсов
+    id = Column(Integer, primary_key=True, index=True)
+    challenge_id = Column(Integer, ForeignKey("challenges.id"), unique=True)
     
-    # Связь с базовым заданием
+    # Конфигурация Docker
+    docker_image = Column(String(255), nullable=False)
+    instance_config = Column(JSON, nullable=False)  # { "internal_port": 80, "environment": {} }
+    resource_limits = Column(JSON, nullable=False)  # { "memory": "100m", "cpu": 1024 }
+    
+    # Настройки инстансов
+    reset_interval = Column(Integer, default=3600)  # секунды
+    max_instances = Column(Integer, default=10)
+    
+    # Статус
+    is_active = Column(Boolean, default=True)
+    
+    # Связи
     challenge = relationship("Challenge", back_populates="dynamic_challenge")
-    # Инстансы задания
     instances = relationship("ChallengeInstance", back_populates="dynamic_challenge")
+    
+    # Отметки времени
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
 
 class ChallengeInstance(Base):
-    """Модель для инстансов динамических заданий"""
     __tablename__ = "challenge_instances"
 
-    id = Column(Integer, primary_key=True)
-    dynamic_challenge_id = Column(Integer, ForeignKey('dynamic_challenges.id'))
-    team_id = Column(Integer, ForeignKey('teams.id'))
-    container_id = Column(String(64))  # ID Docker контейнера
-    status = Column(String(20), default="creating")  # creating, running, stopped, error
-    host_port = Column(Integer)  # Порт для доступа
-    internal_port = Column(Integer)  # Внутренний порт контейнера
-    flag = Column(String(500))  # Уникальный флаг для инстанса
+    id = Column(Integer, primary_key=True, index=True)
+    dynamic_challenge_id = Column(Integer, ForeignKey("dynamic_challenges.id"), nullable=False)
+    team_id = Column(Integer, ForeignKey("teams.id"), nullable=False)
+    
+    # Docker информация
+    container_id = Column(String(64), nullable=False)
+    host_port = Column(Integer, nullable=False)
+    internal_port = Column(Integer, nullable=False)
+    
+    # Флаг и статус
+    flag = Column(String(500), nullable=False)
+    status = Column(String(20), default="running")  # running, stopped, error
+    
+    # Временные метки
     created_at = Column(DateTime, default=func.now())
-    expires_at = Column(DateTime)  # Время истечения инстанса
+    expires_at = Column(DateTime, nullable=False)
     last_health_check = Column(DateTime)
     
     # Связи
