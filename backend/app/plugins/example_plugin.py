@@ -1,72 +1,35 @@
-# backend/app/plugins/example_plugin.py
-from .base import BasePlugin
 from typing import Dict, Any
-import requests
 
-class ExampleNotificationPlugin(BasePlugin):
-    """Пример плагина для расширенных уведомлений"""
-    
-    @property
-    def name(self) -> str:
-        return "example_notifications"
-    
-    @property
-    def version(self) -> str:
-        return "1.0.0"
-    
-    @property
-    def description(self) -> str:
-        return "Плагин для отправки уведомлений в внешние системы"
+class ExamplePlugin:
+    """Пример плагина для CTF-платформы"""
     
     def __init__(self):
-        self.webhook_url = None
-        self.enabled = False
+        self.name = "example_plugin"
+        self.version = "1.0.0"
+        self.description = "Пример плагина для демонстрации"
     
     async def on_plugin_load(self):
-        print(f"🔌 Плагин {self.name} загружен")
+        """Вызывается при загрузке плагина"""
+        print(f"🎯 Плагин {self.name} v{self.version} загружен")
     
-    async def on_flag_submission(self, submission_data: Dict[str, Any]):
-        if not self.enabled or not self.webhook_url:
-            return
-        
-        # Отправка уведомления в внешнюю систему
-        payload = {
-            "event": "flag_submission",
-            "data": submission_data,
-            "timestamp": submission_data.get('timestamp')
-        }
-        
-        try:
-            response = requests.post(self.webhook_url, json=payload, timeout=5)
-            if response.status_code == 200:
-                print(f"✅ Уведомление отправлено в {self.webhook_url}")
-        except Exception as e:
-            print(f"❌ Ошибка отправки уведомления: {e}")
-    
-    async def on_challenge_solve(self, solve_data: Dict[str, Any]):
-        if not self.enabled or not self.webhook_url:
-            return
-        
-        # Отправка уведомления о решении задания
-        payload = {
-            "event": "challenge_solve",
-            "data": solve_data,
-            "timestamp": solve_data.get('timestamp')
-        }
-        
-        try:
-            response = requests.post(self.webhook_url, json=payload, timeout=5)
-            if response.status_code == 200:
-                print(f"✅ Уведомление о решении отправлено")
-        except Exception as e:
-            print(f"❌ Ошибка отправки уведомления: {e}")
+    async def on_plugin_unload(self):
+        """Вызывается при выгрузке плагина"""
+        print(f"🎯 Плагин {self.name} выгружен")
     
     async def get_plugin_config(self) -> Dict[str, Any]:
+        """Получение конфигурации плагина"""
         return {
-            "webhook_url": self.webhook_url,
-            "enabled": self.enabled
+            "name": self.name,
+            "version": self.version,
+            "description": self.description
         }
     
     async def set_plugin_config(self, config: Dict[str, Any]):
-        self.webhook_url = config.get("webhook_url")
-        self.enabled = config.get("enabled", False)
+        """Установка конфигурации плагина"""
+        pass
+    
+    # Пример хуков
+    async def on_flag_submission(self, user_id: int, challenge_id: int, result: bool):
+        """Хук для обработки отправки флага"""
+        if result:
+            print(f"🎉 Пользователь {user_id} решил задание {challenge_id}")
