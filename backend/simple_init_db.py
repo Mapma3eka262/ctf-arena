@@ -56,6 +56,37 @@ def init_sqlite():
         )
         """
     ]
+
+    conn.execute(text("""
+    CREATE TABLE IF NOT EXISTS dynamic_challenges (
+        id SERIAL PRIMARY KEY,
+        challenge_id INTEGER UNIQUE REFERENCES challenges(id),
+        docker_image VARCHAR(255) NOT NULL,
+        instance_config JSON NOT NULL,
+        resource_limits JSON NOT NULL,
+        reset_interval INTEGER DEFAULT 3600,
+        max_instances INTEGER DEFAULT 10,
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+"""))
+
+conn.execute(text("""
+    CREATE TABLE IF NOT EXISTS challenge_instances (
+        id SERIAL PRIMARY KEY,
+        dynamic_challenge_id INTEGER NOT NULL REFERENCES dynamic_challenges(id),
+        team_id INTEGER NOT NULL REFERENCES teams(id),
+        container_id VARCHAR(64) NOT NULL,
+        host_port INTEGER NOT NULL,
+        internal_port INTEGER NOT NULL,
+        flag VARCHAR(500) NOT NULL,
+        status VARCHAR(20) DEFAULT 'running',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        expires_at TIMESTAMP NOT NULL,
+        last_health_check TIMESTAMP
+    )
+"""))
     
     for sql in tables_sql:
         cursor.execute(sql)
