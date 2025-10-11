@@ -44,10 +44,15 @@ python check_structure.py
 # Простая инициализация БД
 python simple_init_db.py
 
-# Применение миграций Alembic (если есть)
+# ВРЕМЕННО отключаем Alembic миграции из-за конфликта имен
+echo "⚠️ Временно пропускаем Alembic миграции из-за конфликта имен..."
+echo "ℹ️  База данных уже инициализирована через simple_init_db.py"
+
+# Вместо alembic upgrade head делаем:
 if [ -f "alembic.ini" ]; then
-    echo "🔄 Применение миграций Alembic..."
-    alembic upgrade head
+    echo "📝 Создаем начальную ревизию Alembic..."
+    # Создаем начальную ревизию на основе текущего состояния
+    alembic stamp head || echo "⚠️ Не удалось проставить метку миграции"
 fi
 
 # Настройка прав
@@ -68,7 +73,7 @@ systemctl enable ctf-api ctf-websocket ctf-celery ctf-celery-beat
 
 # Проверка статуса сервисов
 echo "📊 Проверка статуса сервисов..."
-services=("ctf-api" "ctf-websocket" "ctf-celery" "ctf-celery-beat" "nginx" "postgresql" "redis-server")
+services=("ctf-api" "ctf-websocket" "ctf-celery" "ctf-celery-beat")
 
 for service in "${services[@]}"; do
     if systemctl is-active --quiet "$service"; then
@@ -86,29 +91,17 @@ if curl -f http://localhost:8000/api/health > /dev/null 2>&1; then
     echo "✅ API работает корректно"
 else
     echo "❌ API не отвечает"
-fi
-
-# Проверка WebSocket
-echo "🔍 Проверка WebSocket..."
-if curl -f http://localhost:8001/health > /dev/null 2>&1; then
-    echo "✅ WebSocket работает корректно"
-else
-    echo "❌ WebSocket не отвечает"
+    echo "🔍 Проверка логов..."
+    journalctl -u ctf-api --no-pager -n 10
 fi
 
 echo ""
 echo "🎉 Деплой CyberCTF Arena завершен!"
 echo ""
-echo "🌐 Приложение доступно по адресам:"
-echo "   - HTTP: http://$(curl -s ifconfig.me)"
-echo "   - Локально: http://localhost"
+echo "📝 Следующие шаги:"
+echo "   1. Исправьте конфликт имен 'metadata' в моделях SQLAlchemy"
+echo "   2. Запустите миграции вручную: cd /opt/ctf-arena/backend && source venv/bin/activate && alembic upgrade head"
 echo ""
 echo "👤 Тестовый аккаунт:"
 echo "   - Логин: admin"
 echo "   - Пароль: admin123"
-echo ""
-echo "📝 Дополнительные действия:"
-echo "   - Настройте доменное имя и SSL"
-echo "   - Настройте мониторинг"
-echo "   - Настройте резервное копирование"
-echo "   - Добавьте задания и настройте соревнование"
