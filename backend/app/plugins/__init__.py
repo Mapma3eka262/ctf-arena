@@ -1,8 +1,8 @@
-# backend/app/plugins/__init__.py
 from typing import Dict, List, Any, Optional
 import importlib
 import pkgutil
 import os
+import asyncio
 
 class PluginManager:
     """Менеджер плагинов для CTF-платформы"""
@@ -26,23 +26,23 @@ class PluginManager:
         
         return plugin_modules
     
-    def load_plugin(self, plugin_class):
+    async def load_plugin(self, plugin_class):  # ИСПРАВЛЕНО: добавлен async
         """Загрузка конкретного плагина"""
         try:
             plugin_instance = plugin_class()
             self.loaded_plugins[plugin_instance.name] = plugin_instance
-            await plugin_instance.on_plugin_load()
+            await plugin_instance.on_plugin_load()  # Теперь это корректно
             print(f"✅ Плагин {plugin_instance.name} загружен")
             return plugin_instance
         except Exception as e:
             print(f"❌ Ошибка загрузки плагина {plugin_class.__name__}: {e}")
             return None
     
-    def unload_plugin(self, plugin_name: str):
+    async def unload_plugin(self, plugin_name: str):  # ИСПРАВЛЕНО: добавлен async
         """Выгрузка плагина"""
         if plugin_name in self.loaded_plugins:
             plugin = self.loaded_plugins[plugin_name]
-            await plugin.on_plugin_unload()
+            await plugin.on_plugin_unload()  # Теперь это корректно
             del self.loaded_plugins[plugin_name]
             print(f"✅ Плагин {plugin_name} выгружен")
     
@@ -81,3 +81,40 @@ class PluginManager:
 
 # Глобальный экземпляр менеджера плагинов
 plugin_manager = PluginManager()
+
+# Асинхронная инициализация плагинов при старте
+async def initialize_plugins():
+    """Асинхронная инициализация плагинов"""
+    try:
+        # Обнаружение плагинов
+        plugin_modules = plugin_manager.discover_plugins()
+        
+        # Загрузка плагинов
+        for module in plugin_modules:
+            # Ищем классы плагинов в модуле
+            for attr_name in dir(module):
+                attr = getattr(module, attr_name)
+                if (isinstance(attr, type) and 
+                    hasattr(attr, 'name') and 
+                    hasattr(attr, 'on_plugin_load')):
+                    await plugin_manager.load_plugin(attr)
+        
+        print(f"🎯 Загружено плагинов: {len(plugin_manager.loaded_plugins)}")
+        
+    except Exception as e:
+        print(f"❌ Ошибка инициализации плагинов: {e}")
+
+# Создаем задачу для инициализации плагинов при импорте
+import asyncio
+try:
+    # Для уже работающего event loop (например, в FastAPI)
+    loop = asyncio.get_event_loop()
+    if loop.is_running():
+        # Если loop уже запущен, создаем задачу
+        asyncio.create_task(initialize_plugins())
+    else:
+        # Если loop не запущен, запускаем синхронно
+        loop.run_until_complete(initialize_plugins())
+except RuntimeError:
+    # Если нет event loop, создаем новый
+    asyncio.run(initialize_plugins())
