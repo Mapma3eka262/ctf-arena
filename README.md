@@ -36,6 +36,7 @@ git clone https://github.com/Mapma3eka262/ctf-arena.git /opt/ctf-arena
 
 # Настройка сервера
 cd /opt/ctf-arena/deploy
+chmod +x *.sh
 sudo ./setup_server.sh
 
 # Настройка окружения
