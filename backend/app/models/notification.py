@@ -15,7 +15,7 @@ class Notification(Base):
     category = Column(String(50), default="system")  # system, team, challenge
     is_read = Column(Boolean, default=False)
     action_url = Column(String(500))  # URL для действия
-    metadata = Column(JSON)  # Дополнительные данные
+    notification_data = Column(JSON, nullable=True)  # Дополнительные данные
     created_at = Column(DateTime, default=func.now())
     expires_at = Column(DateTime)
 
