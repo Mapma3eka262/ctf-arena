@@ -6,6 +6,7 @@ from typing import List
 from app.core.database import get_db
 from app.core.auth import get_current_user
 from app.schemas.team import TeamResponse, TeamUpdate, TeamInvite
+from app.schemas.user import UserResponse  # ДОБАВЬТЕ ЭТУ СТРОКУ
 from app.schemas.invitation import InvitationResponse
 from app.models.team import Team
 from app.models.user import User
