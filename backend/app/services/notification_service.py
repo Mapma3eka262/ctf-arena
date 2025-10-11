@@ -1,8 +1,6 @@
-# backend/app/services/notification_service.py
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
 from app.models.notification import Notification
-from app.api.websocket import manager as websocket_manager
 
 class NotificationService:
     """Сервис для управления уведомлениями"""
@@ -32,6 +30,9 @@ class NotificationService:
         self.db.add(notification)
         self.db.commit()
         self.db.refresh(notification)
+        
+        # ЛЕНИВАЯ ЗАГРУЗКА websocket_manager для избежания circular imports
+        from app.api.websocket import manager as websocket_manager
         
         # Отправляем уведомление через WebSocket если пользователь онлайн
         if user_id != 0:  # Не broadcast
