@@ -7,6 +7,7 @@ from datetime import datetime
 
 from app.core.database import get_db
 from app.core.auth import get_current_admin
+from app.schemas.user import UserResponse 
 from app.models.service import Service
 from app.services.monitoring_service import MonitoringService
 
