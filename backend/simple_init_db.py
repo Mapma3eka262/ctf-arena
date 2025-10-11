@@ -87,6 +87,22 @@ conn.execute(text("""
         last_health_check TIMESTAMP
     )
 """))
+
+conn.execute(text("""
+    CREATE TABLE IF NOT EXISTS notifications (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        title VARCHAR(200) NOT NULL,
+        message TEXT NOT NULL,
+        type VARCHAR(50) DEFAULT 'info',
+        category VARCHAR(50) DEFAULT 'system',
+        is_read BOOLEAN DEFAULT FALSE,
+        action_url VARCHAR(500),
+        notification_data JSON,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        read_at TIMESTAMP
+    )
+"""))
     
     for sql in tables_sql:
         cursor.execute(sql)
