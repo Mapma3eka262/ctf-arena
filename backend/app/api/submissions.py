@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from app.core.database import get_db
 from app.core.auth import get_current_user
 from app.schemas.submission import FlagSubmit, SubmissionResponse, SubmissionStats
+from app.schemas.user import UserResponse
 from app.models.submission import Submission
 from app.models.challenge import Challenge
 from app.services.flag_service import FlagService
