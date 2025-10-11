@@ -1,11 +1,14 @@
-# backend/app/services/dynamic_service.py
 import docker
 import asyncio
 import secrets
 import string
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, TYPE_CHECKING
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
+
+# Используем TYPE_CHECKING для избежания circular imports
+if TYPE_CHECKING:
+    from app.models.dynamic_challenge import DynamicChallenge, ChallengeInstance
 
 class DynamicChallengeService:
     """Сервис для управления динамическими заданиями"""
@@ -138,12 +141,12 @@ class DynamicChallengeService:
         random_part = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(16))
         return f"CTF{{{random_part}}}"
     
-    def _get_port_mapping(self, dynamic_challenge: DynamicChallenge) -> Dict[str, int]:
+    def _get_port_mapping(self, dynamic_challenge: 'DynamicChallenge') -> Dict[str, int]:
         """Создание маппинга портов для Docker"""
         internal_port = dynamic_challenge.instance_config['internal_port']
         return {f"{internal_port}/tcp": None}  # Docker выберет случайный порт
     
-    def _extract_host_port(self, container, dynamic_challenge: DynamicChallenge) -> int:
+    def _extract_host_port(self, container, dynamic_challenge: 'DynamicChallenge') -> int:
         """Извлечение хостового порта из контейнера"""
         internal_port = dynamic_challenge.instance_config['internal_port']
         port_info = container.ports.get(f"{internal_port}/tcp")
