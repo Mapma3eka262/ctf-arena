@@ -1,6 +1,6 @@
 # backend/app/api/websocket.py
 from fastapi import WebSocket, WebSocketDisconnect
-from typing import Dict, Set, List
+from typing import Dict, Set, List, Any  # Добавьте Any здесь
 import json
 import uuid
 from collections import defaultdict
