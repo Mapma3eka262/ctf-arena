@@ -1,11 +1,11 @@
-# backend/app/api/challenges.py
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 
 from app.core.database import get_db
 from app.core.auth import get_current_user
-from app.schemas.challenge import ChallengeResponse, ChallengeDetail
+from app.schemas.challenge import ChallengeResponse, ChallengeDetail, ChallengeCreate, ChallengeUpdate
+from app.schemas.user import UserResponse  # ДОБАВЬТЕ ЭТОТ ИМПОРТ
 from app.models.challenge import Challenge
 from app.models.submission import Submission
 
@@ -35,7 +35,7 @@ async def get_challenges(
         challenge_data = ChallengeResponse.from_orm(challenge)
         
         # Проверяем, решил ли пользователь это задание
-        if current_user.team:
+        if current_user.team_id:  # ИСПРАВЛЕНО: current_user.team -> current_user.team_id
             solved = db.query(Submission).filter(
                 Submission.team_id == current_user.team_id,
                 Submission.challenge_id == challenge.id,
@@ -80,7 +80,7 @@ async def get_challenge(
     
     # Проверяем, решил ли пользователь это задание
     is_solved = False
-    if current_user.team:
+    if current_user.team_id:  # ИСПРАВЛЕНО: current_user.team -> current_user.team_id
         solved = db.query(Submission).filter(
             Submission.team_id == current_user.team_id,
             Submission.challenge_id == challenge.id,
