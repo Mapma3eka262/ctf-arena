@@ -32,7 +32,7 @@
 ### 1. Установка на сервер
 ```bash
 # Клонирование проекта
-git clone <repository-url> /opt/ctf-arena
+git clone https://github.com/Mapma3eka262/ctf-arena.git /opt/ctf-arena
 
 # Настройка сервера
 cd /opt/ctf-arena/deploy
