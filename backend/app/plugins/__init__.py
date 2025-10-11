@@ -26,23 +26,23 @@ class PluginManager:
         
         return plugin_modules
     
-    async def load_plugin(self, plugin_class):  # ИСПРАВЛЕНО: добавлен async
+    async def load_plugin(self, plugin_class):
         """Загрузка конкретного плагина"""
         try:
             plugin_instance = plugin_class()
             self.loaded_plugins[plugin_instance.name] = plugin_instance
-            await plugin_instance.on_plugin_load()  # Теперь это корректно
+            await plugin_instance.on_plugin_load()
             print(f"✅ Плагин {plugin_instance.name} загружен")
             return plugin_instance
         except Exception as e:
             print(f"❌ Ошибка загрузки плагина {plugin_class.__name__}: {e}")
             return None
     
-    async def unload_plugin(self, plugin_name: str):  # ИСПРАВЛЕНО: добавлен async
+    async def unload_plugin(self, plugin_name: str):
         """Выгрузка плагина"""
         if plugin_name in self.loaded_plugins:
             plugin = self.loaded_plugins[plugin_name]
-            await plugin.on_plugin_unload()  # Теперь это корректно
+            await plugin.on_plugin_unload()
             del self.loaded_plugins[plugin_name]
             print(f"✅ Плагин {plugin_name} выгружен")
     
@@ -82,7 +82,7 @@ class PluginManager:
 # Глобальный экземпляр менеджера плагинов
 plugin_manager = PluginManager()
 
-# Асинхронная инициализация плагинов при старте
+# Асинхронная инициализация плагинов
 async def initialize_plugins():
     """Асинхронная инициализация плагинов"""
     try:
@@ -91,30 +91,25 @@ async def initialize_plugins():
         
         # Загрузка плагинов
         for module in plugin_modules:
-            # Ищем классы плагинов в модуле
+            # Ищем классы плагинов в модуле (игнорируем абстрактные классы)
             for attr_name in dir(module):
                 attr = getattr(module, attr_name)
                 if (isinstance(attr, type) and 
                     hasattr(attr, 'name') and 
-                    hasattr(attr, 'on_plugin_load')):
-                    await plugin_manager.load_plugin(attr)
+                    hasattr(attr, 'version') and
+                    hasattr(attr, 'on_plugin_load') and
+                    not attr.__name__.startswith('Base')):
+                    try:
+                        await plugin_manager.load_plugin(attr)
+                    except Exception as e:
+                        print(f"❌ Ошибка загрузки плагина {attr.__name__}: {e}")
         
         print(f"🎯 Загружено плагинов: {len(plugin_manager.loaded_plugins)}")
         
     except Exception as e:
         print(f"❌ Ошибка инициализации плагинов: {e}")
 
-# Создаем задачу для инициализации плагинов при импорте
-import asyncio
-try:
-    # Для уже работающего event loop (например, в FastAPI)
-    loop = asyncio.get_event_loop()
-    if loop.is_running():
-        # Если loop уже запущен, создаем задачу
-        asyncio.create_task(initialize_plugins())
-    else:
-        # Если loop не запущен, запускаем синхронно
-        loop.run_until_complete(initialize_plugins())
-except RuntimeError:
-    # Если нет event loop, создаем новый
-    asyncio.run(initialize_plugins())
+# Функция для запуска инициализации
+async def start_plugin_initialization():
+    """Запуск инициализации плагинов"""
+    await initialize_plugins()
