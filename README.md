@@ -45,6 +45,16 @@ sudo ./setup_env.sh
 # Интеграция компонентов
 sudo ./integrate_frontend_backend.sh
 
+# Добавляем пользователя ctfapp в группу docker
+sudo usermod -aG docker ctfapp
+
+# Перезапускаем сервисы
+sudo systemctl daemon-reload
+sudo systemctl restart ctf-api ctf-websocket
+
+# Проверяем права
+sudo chmod 666 /var/run/docker.sock
+
 # Деплой проекта
 sudo ./deploy_project.sh
 ```
