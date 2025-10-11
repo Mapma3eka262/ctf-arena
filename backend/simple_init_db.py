@@ -103,6 +103,20 @@ conn.execute(text("""
         read_at TIMESTAMP
     )
 """))
+
+conn.execute(text("""
+    CREATE TABLE IF NOT EXISTS invitations (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(100) NOT NULL,
+        token VARCHAR(100) UNIQUE NOT NULL,
+        status VARCHAR(20) DEFAULT 'pending',
+        expires_at TIMESTAMP NOT NULL,
+        team_id INTEGER NOT NULL REFERENCES teams(id),
+        invited_by_id INTEGER NOT NULL REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+"""))
     
     for sql in tables_sql:
         cursor.execute(sql)
