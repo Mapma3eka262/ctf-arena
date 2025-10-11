@@ -1,4 +1,3 @@
-# backend/check_structure.py
 #!/usr/bin/env python3
 """
 Скрипт проверки структуры проекта
@@ -7,21 +6,26 @@
 import os
 import sys
 
+def get_project_root():
+    """Получить корневую директорию проекта"""
+    current_file = os.path.abspath(__file__)
+    return os.path.dirname(os.path.dirname(current_file))
+
 def check_directory_structure():
     """Проверка структуры директорий проекта"""
-    base_dir = os.path.dirname(os.path.abspath(__file__))
+    base_dir = get_project_root()
     
     required_dirs = [
-        'app',
-        'app/api',
-        'app/core', 
-        'app/models',
-        'app/schemas',
-        'app/services',
-        'app/tasks',
-        'app/utils',
-        'app/plugins',
-        'migrations/versions',
+        'backend/app',
+        'backend/app/api',
+        'backend/app/core', 
+        'backend/app/models',
+        'backend/app/schemas',
+        'backend/app/services',
+        'backend/app/tasks',
+        'backend/app/utils',
+        'backend/app/plugins',
+        'backend/migrations/versions',
         'frontend/assets/css',
         'frontend/assets/js',
         'frontend/components',
@@ -32,17 +36,17 @@ def check_directory_structure():
     ]
     
     required_files = [
-        'app/__init__.py',
-        'app/main.py',
-        'app/core/__init__.py',
-        'app/core/config.py',
-        'app/core/database.py',
-        'app/core/security.py',
-        'app/models/__init__.py',
-        'app/api/__init__.py',
-        'requirements/base.txt',
-        'alembic.ini',
-        'Dockerfile',
+        'backend/app/__init__.py',
+        'backend/app/main.py',
+        'backend/app/core/__init__.py',
+        'backend/app/core/config.py',
+        'backend/app/core/database.py',
+        'backend/app/core/security.py',
+        'backend/app/models/__init__.py',
+        'backend/app/api/__init__.py',
+        'backend/requirements/base.txt',
+        'backend/alembic.ini',
+        'backend/Dockerfile',
         'docker-compose.microservices.yml'
     ]
     
@@ -70,24 +74,23 @@ def check_directory_structure():
             print(f"❌ Не является файлом: {file_path}")
             all_ok = False
     
-    # Проверка Python модулей
-    python_modules = [
-        'app.api.auth',
-        'app.api.users', 
-        'app.api.teams',
-        'app.api.challenges',
-        'app.api.submissions',
-        'app.models.user',
-        'app.models.team',
-        'app.models.challenge',
-        'app.models.submission'
+    # Проверка Python модулей (через файлы)
+    python_module_files = [
+        'backend/app/api/auth.py',
+        'backend/app/api/users.py', 
+        'backend/app/api/teams.py',
+        'backend/app/api/challenges.py',
+        'backend/app/api/submissions.py',
+        'backend/app/models/user.py',
+        'backend/app/models/team.py',
+        'backend/app/models/challenge.py',
+        'backend/app/models/submission.py'
     ]
     
-    for module in python_modules:
-        try:
-            __import__(module)
-        except ImportError as e:
-            print(f"❌ Ошибка импорта модуля {module}: {e}")
+    for module_file in python_module_files:
+        full_path = os.path.join(base_dir, module_file)
+        if not os.path.exists(full_path):
+            print(f"❌ Отсутствует файл модуля: {module_file}")
             all_ok = False
     
     if all_ok:
@@ -99,23 +102,31 @@ def check_directory_structure():
 
 def check_dependencies():
     """Проверка установленных зависимостей"""
-    try:
-        import fastapi
-        import sqlalchemy
-        import pydantic
-        import redis
-        import docker
-        import celery
-        import bcrypt
-        import jwt
-        import requests
-        
-        print("✅ Основные зависимости установлены")
-        return True
-        
-    except ImportError as e:
-        print(f"❌ Отсутствует зависимость: {e}")
-        return False
+    dependencies = {
+        'fastapi': 'fastapi',
+        'sqlalchemy': 'sqlalchemy',
+        'pydantic': 'pydantic',
+        'redis': 'redis',
+        'docker': 'docker',
+        'celery': 'celery',
+        'bcrypt': 'bcrypt',
+        'jwt': 'PyJWT',
+        'requests': 'requests'
+    }
+    
+    print("🔍 Проверка зависимостей...")
+    
+    all_ok = True
+    
+    for package, import_name in dependencies.items():
+        try:
+            __import__(import_name)
+            print(f"✅ {package}")
+        except ImportError:
+            print(f"❌ Отсутствует: {package}")
+            all_ok = False
+    
+    return all_ok
 
 def check_environment():
     """Проверка переменных окружения"""
@@ -123,8 +134,12 @@ def check_environment():
     
     print("🔍 Проверка переменных окружения...")
     
-    from dotenv import load_dotenv
-    load_dotenv()
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+        print("✅ dotenv загружен")
+    except ImportError:
+        print("⚠️  dotenv не установлен")
     
     all_ok = True
     
@@ -132,6 +147,8 @@ def check_environment():
         if not os.getenv(var):
             print(f"❌ Отсутствует переменная окружения: {var}")
             all_ok = False
+        else:
+            print(f"✅ {var}")
     
     if all_ok:
         print("✅ Переменные окружения в порядке!")
@@ -143,6 +160,7 @@ def check_environment():
 def main():
     """Основная функция проверки"""
     print("🚀 Проверка проекта CyberCTF Arena...")
+    print(f"📁 Корневая директория: {get_project_root()}")
     
     checks = [
         check_directory_structure(),
