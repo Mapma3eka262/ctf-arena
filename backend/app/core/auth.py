@@ -7,7 +7,6 @@ from jose import JWTError, jwt
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.core.security import verify_token
 from app.models.user import User
 
 security = HTTPBearer()
