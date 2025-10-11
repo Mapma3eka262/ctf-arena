@@ -1,0 +1,134 @@
+# docker-compose.microservices.yml
+version: '3.8'
+
+services:
+  # Основное приложение
+  ctf-api:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://ctfuser:ctfpassword@postgres:5432/ctfarena
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - ctf_network
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+
+  # WebSocket сервис
+  ctf-websocket:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: uvicorn app.ws_server:app --host 0.0.0.0 --port 8001
+    ports:
+      - "8001:8001"
+    environment:
+      - DATABASE_URL=postgresql://ctfuser:ctfpassword@postgres:5432/ctfarena
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - ctf_network
+
+  # Сервис динамических заданий
+  ctf-dynamic:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: python -m app.services.dynamic_worker
+    environment:
+      - DATABASE_URL=postgresql://ctfuser:ctfpassword@postgres:5432/ctfarena
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - ctf_network
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./challenges:/app/challenges
+
+  # Celery worker
+  ctf-celery:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A app.tasks.celery worker --loglevel=info
+    environment:
+      - DATABASE_URL=postgresql://ctfuser:ctfpassword@postgres:5432/ctfarena
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - ctf_network
+
+  # Celery beat
+  ctf-celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A app.tasks.celery beat --loglevel=info
+    environment:
+      - DATABASE_URL=postgresql://ctfuser:ctfpassword@postgres:5432/ctfarena
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - ctf_network
+
+  # PostgreSQL
+  postgres:
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=ctfuser
+      - POSTGRES_PASSWORD=ctfpassword
+      - POSTGRES_DB=ctfarena
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./deploy/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - ctf_network
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    networks:
+      - ctf_network
+
+  # Nginx
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/nginx.conf
+      - ./deploy/sites-available/:/etc/nginx/sites-available/
+      - ./frontend:/var/www/html
+      - ./uploads:/var/www/uploads
+      - ./ssl:/etc/nginx/ssl
+    depends_on:
+      - ctf-api
+      - ctf-websocket
+    networks:
+      - ctf_network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  ctf_network:
+    driver: bridge
