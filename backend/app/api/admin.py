@@ -6,7 +6,7 @@ from typing import List, Dict, Any
 from app.core.database import get_db
 from app.core.auth import get_current_admin
 from app.schemas.user import UserResponse
-from app.schemas.challenge import ChallengeCreate, ChallengeUpdate
+from app.schemas.challenge import ChallengeCreate, ChallengeUpdate, ChallengeResponse
 from app.models.user import User
 from app.models.team import Team
 from app.models.challenge import Challenge
