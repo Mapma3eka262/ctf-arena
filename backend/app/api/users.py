@@ -8,6 +8,7 @@ from app.core.auth import get_current_user
 from app.schemas.user import UserResponse, UserUpdate
 from app.models.user import User
 from app.services.audit_service import AuditService
+from app.services.auth_service import AuthService  # ДОБАВЬТЕ ЭТОТ ИМПОРТ
 
 router = APIRouter()
 
