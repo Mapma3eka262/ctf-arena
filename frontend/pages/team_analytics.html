@@ -1,0 +1,630 @@
+<!-- frontend/pages/team_analytics.html -->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CyberCTF Arena - Аналитика команды</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="/assets/css/animations.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+        
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            background-color: #262626;
+            color: #FFFFFF;
+        }
+        
+        .analytics-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .strength-card {
+            background: linear-gradient(135deg, rgba(0, 255, 0, 0.1), rgba(0, 200, 0, 0.1));
+            border: 1px solid rgba(0, 255, 0, 0.3);
+        }
+        
+        .weakness-card {
+            background: linear-gradient(135deg, rgba(255, 0, 0, 0.1), rgba(200, 0, 0, 0.1));
+            border: 1px solid rgba(255, 0, 0, 0.3);
+        }
+        
+        .recommendation-card {
+            background: linear-gradient(135deg, rgba(255, 165, 0, 0.1), rgba(200, 120, 0, 0.1));
+            border: 1px solid rgba(255, 165, 0, 0.3);
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-900">
+    <!-- Header -->
+    <div id="header-container"></div>
+
+    <!-- Main Content -->
+    <div class="container mx-auto px-4 py-8">
+        <div class="max-w-6xl mx-auto">
+            <!-- Header -->
+            <div class="text-center mb-12">
+                <h1 class="text-4xl font-bold mb-4">Аналитика команды</h1>
+                <p class="text-gray-400 text-lg">Подробная статистика и рекомендации для улучшения результатов</p>
+            </div>
+
+            <!-- Team Overview -->
+            <div class="analytics-card rounded-2xl p-8 mb-8">
+                <div class="flex flex-col md:flex-row justify-between items-center gap-6">
+                    <div class="text-center md:text-left">
+                        <h2 id="team-name" class="text-3xl font-bold mb-2">Загрузка...</h2>
+                        <p class="text-gray-400" id="team-members">Участников: 0</p>
+                    </div>
+                    <div class="grid grid-cols-3 gap-6 text-center">
+                        <div>
+                            <div class="text-2xl font-bold text-green-500" id="team-score">0</div>
+                            <div class="text-sm text-gray-400">Общий счет</div>
+                        </div>
+                        <div>
+                            <div class="text-2xl font-bold text-red-600" id="team-rank">#-</div>
+                            <div class="text-sm text-gray-400">Рейтинг</div>
+                        </div>
+                        <div>
+                            <div class="text-2xl font-bold text-blue-500" id="success-rate">0%</div>
+                            <div class="text-sm text-gray-400">Успешность</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid lg:grid-cols-3 gap-8">
+                <!-- Left Column -->
+                <div class="lg:col-span-2 space-y-8">
+                    <!-- Performance Charts -->
+                    <div class="analytics-card rounded-2xl p-6">
+                        <h3 class="text-xl font-bold mb-6">Продуктивность команды</h3>
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <div>
+                                <h4 class="font-bold mb-4 text-center">Активность по времени</h4>
+                                <div class="h-48">
+                                    <canvas id="activityChart"></canvas>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 class="font-bold mb-4 text-center">Распределение по категориям</h4>
+                                <div class="h-48">
+                                    <canvas id="categoryChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Strengths -->
+                    <div class="strength-card rounded-2xl p-6">
+                        <h3 class="text-xl font-bold mb-4 flex items-center">
+                            <i data-feather="trending-up" class="w-5 h-5 mr-2 text-green-500"></i>
+                            Сильные стороны
+                        </h3>
+                        <div id="strengths-list" class="space-y-3">
+                            <div class="text-center py-4">
+                                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-green-500 mx-auto mb-2"></div>
+                                <p class="text-gray-400 text-sm">Анализ сильных сторон...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recommendations -->
+                    <div class="recommendation-card rounded-2xl p-6">
+                        <h3 class="text-xl font-bold mb-4 flex items-center">
+                            <i data-feather="target" class="w-5 h-5 mr-2 text-orange-500"></i>
+                            Рекомендации
+                        </h3>
+                        <div id="recommendations-list" class="space-y-3">
+                            <div class="text-center py-4">
+                                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-500 mx-auto mb-2"></div>
+                                <p class="text-gray-400 text-sm">Генерация рекомендаций...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column -->
+                <div class="space-y-8">
+                    <!-- Weaknesses -->
+                    <div class="weakness-card rounded-2xl p-6">
+                        <h3 class="text-xl font-bold mb-4 flex items-center">
+                            <i data-feather="alert-triangle" class="w-5 h-5 mr-2 text-red-500"></i>
+                            Зоны роста
+                        </h3>
+                        <div id="weaknesses-list" class="space-y-3">
+                            <div class="text-center py-4">
+                                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-red-500 mx-auto mb-2"></div>
+                                <p class="text-gray-400 text-sm">Анализ слабых сторон...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Comparison -->
+                    <div class="analytics-card rounded-2xl p-6">
+                        <h3 class="text-xl font-bold mb-4">Сравнение с топом</h3>
+                        <div id="comparison-data">
+                            <div class="text-center py-4">
+                                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-red-600 mx-auto mb-2"></div>
+                                <p class="text-gray-400 text-sm">Загрузка сравнения...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Team Members -->
+                    <div class="analytics-card rounded-2xl p-6">
+                        <h3 class="text-xl font-bold mb-4">Участники команды</h3>
+                        <div id="team-members-list">
+                            <div class="text-center py-4">
+                                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-red-600 mx-auto mb-2"></div>
+                                <p class="text-gray-400 text-sm">Загрузка участников...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/components/header.html" type="text/html" id="header-template"></script>
+    <script>
+        // Global variables
+        let activityChart = null;
+        let categoryChart = null;
+
+        // Load header
+        fetch('/components/header.html')
+            .then(response => response.text())
+            .then(html => {
+                document.getElementById('header-container').innerHTML = html;
+                feather.replace();
+            });
+
+        // Check authentication and team membership
+        async function checkAuth() {
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                window.location.href = '/pages/lk.html';
+                return false;
+            }
+
+            try {
+                const response = await fetch('/api/users/me', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    localStorage.removeItem('authToken');
+                    window.location.href = '/pages/lk.html';
+                    return false;
+                }
+
+                const user = await response.json();
+                if (!user.team) {
+                    window.location.href = '/pages/arena.html';
+                    return false;
+                }
+
+                return true;
+            } catch (error) {
+                localStorage.removeItem('authToken');
+                window.location.href = '/pages/lk.html';
+                return false;
+            }
+        }
+
+        // Load team analytics
+        async function loadTeamAnalytics() {
+            try {
+                // Load team insights
+                const insightsResponse = await fetch('/api/analytics/team/insights', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    }
+                });
+                
+                if (!insightsResponse.ok) {
+                    throw new Error('Не удалось загрузить аналитику');
+                }
+
+                const insights = await insightsResponse.json();
+                renderTeamAnalytics(insights);
+
+                // Load team activity
+                const activityResponse = await fetch('/api/analytics/team/activity', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    }
+                });
+                
+                if (activityResponse.ok) {
+                    const activity = await activityResponse.json();
+                    createCharts(activity);
+                }
+
+            } catch (error) {
+                console.error('Error loading team analytics:', error);
+                showError('Ошибка загрузки аналитики');
+            }
+        }
+
+        // Render team analytics
+        function renderTeamAnalytics(insights) {
+            // Update team overview
+            document.getElementById('team-name').textContent = insights.team?.name || 'Команда';
+            document.getElementById('team-members').textContent = `Участников: ${insights.team?.member_count || 0}`;
+            document.getElementById('team-score').textContent = insights.team?.score || 0;
+            document.getElementById('team-rank').textContent = `#${insights.team?.rank || '?'}`;
+            document.getElementById('success-rate').textContent = `${insights.team?.success_rate || 0}%`;
+
+            // Render strengths
+            renderStrengths(insights.strengths || []);
+
+            // Render weaknesses
+            renderWeaknesses(insights.weaknesses || []);
+
+            // Render recommendations
+            renderRecommendations(insights.recommendations || []);
+
+            // Render comparison
+            renderComparison(insights.comparison);
+
+            // Render team members
+            renderTeamMembers(insights.team?.members || []);
+        }
+
+        // Render strengths
+        function renderStrengths(strengths) {
+            const container = document.getElementById('strengths-list');
+            
+            if (strengths.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-4">
+                        <i data-feather="search" class="w-8 h-8 text-gray-500 mx-auto mb-2"></i>
+                        <p class="text-gray-400 text-sm">Недостаточно данных для анализа</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = strengths.map(strength => `
+                <div class="bg-green-600 bg-opacity-20 rounded-lg p-4">
+                    <div class="flex justify-between items-start mb-2">
+                        <h4 class="font-bold text-green-400">${strength.category}</h4>
+                        <span class="bg-green-600 text-white px-2 py-1 rounded text-xs">
+                            ${strength.solved_count} решений
+                        </span>
+                    </div>
+                    <p class="text-green-300 text-sm">
+                        Сила: ${Math.round(strength.strength_score)} очков
+                    </p>
+                </div>
+            `).join('');
+
+            feather.replace();
+        }
+
+        // Render weaknesses
+        function renderWeaknesses(weaknesses) {
+            const container = document.getElementById('weaknesses-list');
+            
+            if (weaknesses.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-4">
+                        <i data-feather="check-circle" class="w-8 h-8 text-gray-500 mx-auto mb-2"></i>
+                        <p class="text-gray-400 text-sm">Все категории освоены!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = weaknesses.map(weakness => `
+                <div class="bg-red-600 bg-opacity-20 rounded-lg p-4">
+                    <div class="flex justify-between items-start mb-2">
+                        <h4 class="font-bold text-red-400">${weakness.category}</h4>
+                        <span class="bg-red-600 text-white px-2 py-1 rounded text-xs">
+                            ${getPriorityText(weakness.priority)}
+                        </span>
+                    </div>
+                    <p class="text-red-300 text-sm">
+                        ${getWeaknessReasonText(weakness)}
+                    </p>
+                </div>
+            `).join('');
+
+            feather.replace();
+        }
+
+        // Render recommendations
+        function renderRecommendations(recommendations) {
+            const container = document.getElementById('recommendations-list');
+            
+            if (recommendations.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-4">
+                        <i data-feather="award" class="w-8 h-8 text-gray-500 mx-auto mb-2"></i>
+                        <p class="text-gray-400 text-sm">Продолжайте в том же духе!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = recommendations.map(rec => `
+                <div class="bg-orange-600 bg-opacity-20 rounded-lg p-4">
+                    <div class="flex justify-between items-start mb-2">
+                        <h4 class="font-bold text-orange-400">${rec.category}</h4>
+                        <span class="bg-orange-600 text-white px-2 py-1 rounded text-xs">
+                            ${getPriorityText(rec.priority)}
+                        </span>
+                    </div>
+                    <p class="text-orange-300 text-sm mb-2">${rec.message}</p>
+                    <button onclick="handleRecommendationAction('${rec.action}')" 
+                            class="bg-orange-600 hover:bg-orange-700 text-white px-3 py-1 rounded text-xs transition-colors">
+                        ${getActionText(rec.action)}
+                    </button>
+                </div>
+            `).join('');
+
+            feather.replace();
+        }
+
+        // Render comparison
+        function renderComparison(comparison) {
+            const container = document.getElementById('comparison-data');
+            
+            if (!comparison) {
+                container.innerHTML = `
+                    <div class="text-center text-gray-400 py-4">
+                        <p>Нет данных для сравнения</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const scoreGap = comparison.score_gap || 0;
+            const topTeamScore = comparison.top_teams?.[0]?.score || 0;
+            
+            container.innerHTML = `
+                <div class="space-y-4">
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-red-600">${scoreGap}</div>
+                        <div class="text-sm text-gray-400">Отставание от лидера</div>
+                    </div>
+                    
+                    <div class="space-y-2">
+                        <div class="flex justify-between text-sm">
+                            <span>Ваша команда:</span>
+                            <span class="font-bold">${comparison.current_team?.score || 0}</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span>Лидер:</span>
+                            <span class="font-bold text-green-500">${topTeamScore}</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span>Успешность:</span>
+                            <span class="font-bold">${Math.round(comparison.current_team?.success_rate || 0)}%</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Render team members
+        function renderTeamMembers(members) {
+            const container = document.getElementById('team-members-list');
+            
+            if (members.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center text-gray-400 py-4">
+                        <p>Нет данных об участниках</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = members.map(member => `
+                <div class="flex items-center justify-between p-3 bg-gray-750 rounded-lg mb-2">
+                    <div class="flex items-center">
+                        <div class="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center mr-3">
+                            <i data-feather="user" class="w-4 h-4 text-gray-300"></i>
+                        </div>
+                        <div>
+                            <div class="font-medium">${member.username}</div>
+                            <div class="text-xs text-gray-400">${member.role === 'captain' ? 'Капитан' : 'Участник'}</div>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-sm font-bold text-green-500">${member.score || 0}</div>
+                        <div class="text-xs text-gray-400">очков</div>
+                    </div>
+                </div>
+            `).join('');
+
+            feather.replace();
+        }
+
+        // Create charts
+        function createCharts(activity) {
+            createActivityChart(activity);
+            createCategoryChart(activity);
+        }
+
+        function createActivityChart(activity) {
+            const ctx = document.getElementById('activityChart').getContext('2d');
+            
+            if (activityChart) {
+                activityChart.destroy();
+            }
+            
+            const hours = Array.from({length: 24}, (_, i) => i);
+            const submissions = hours.map(hour => {
+                const hourData = activity.hourly_activity?.find(a => a.hour === hour);
+                return hourData ? hourData.submissions : 0;
+            });
+            
+            activityChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: hours.map(h => `${h}:00`),
+                    datasets: [{
+                        label: 'Отправки',
+                        data: submissions,
+                        borderColor: '#EA000F',
+                        backgroundColor: 'rgba(234, 0, 15, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                color: '#9CA3AF'
+                            },
+                            grid: {
+                                color: '#374151'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#9CA3AF'
+                            },
+                            grid: {
+                                color: '#374151'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createCategoryChart(activity) {
+            const ctx = document.getElementById('categoryChart').getContext('2d');
+            
+            if (categoryChart) {
+                categoryChart.destroy();
+            }
+            
+            // This would come from API in real implementation
+            const categories = ['WEB', 'Crypto', 'Forensics', 'Reversing', 'PWN', 'MISC'];
+            const solved = categories.map(cat => Math.floor(Math.random() * 10)); // Mock data
+            
+            categoryChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: categories,
+                    datasets: [{
+                        data: solved,
+                        backgroundColor: [
+                            '#FF6384',
+                            '#36A2EB', 
+                            '#FFCE56',
+                            '#4BC0C0',
+                            '#9966FF',
+                            '#FF9F40'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: '#9CA3AF'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Utility functions
+        function getPriorityText(priority) {
+            const texts = {
+                'high': 'Высокий',
+                'medium': 'Средний', 
+                'low': 'Низкий'
+            };
+            return texts[priority] || priority;
+        }
+
+        function getWeaknessReasonText(weakness) {
+            if (weakness.reason === 'no_attempts') {
+                return 'Нет попыток решения';
+            } else if (weakness.reason === 'low_success_rate') {
+                return `Успешность: ${Math.round((weakness.success_rate || 0) * 100)}%`;
+            }
+            return weakness.reason;
+        }
+
+        function getActionText(action) {
+            const texts = {
+                'view_challenges': 'Смотреть задания',
+                'practice_category': 'Тренироваться',
+                'advanced_challenges': 'Сложные задания'
+            };
+            return texts[action] || 'Действие';
+        }
+
+        function handleRecommendationAction(action) {
+            switch (action) {
+                case 'view_challenges':
+                    window.location.href = '/pages/arena.html';
+                    break;
+                case 'practice_category':
+                    // Filter challenges by category
+                    window.location.href = '/pages/arena.html';
+                    break;
+                case 'advanced_challenges':
+                    // Show only hard challenges
+                    window.location.href = '/pages/arena.html?difficulty=hard';
+                    break;
+            }
+        }
+
+        function showError(message) {
+            const container = document.querySelector('.max-w-6xl');
+            container.innerHTML = `
+                <div class="text-center py-12">
+                    <i data-feather="alert-triangle" class="w-12 h-12 text-red-500 mx-auto mb-4"></i>
+                    <h2 class="text-2xl font-bold mb-2">Ошибка</h2>
+                    <p class="text-gray-400 mb-6">${message}</p>
+                    <button onclick="location.reload()" 
+                            class="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg transition-colors">
+                        Попробовать снова
+                    </button>
+                </div>
+            `;
+            feather.replace();
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Check authentication
+            if (!await checkAuth()) return;
+            
+            // Load analytics data
+            await loadTeamAnalytics();
+            
+            feather.replace();
+        });
+    </script>
+</body>
+</html>

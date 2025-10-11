@@ -1,0 +1,344 @@
+<!-- frontend/components/modal.html -->
+<div id="modal-overlay" class="fixed inset-0 bg-black bg-opacity-75 z-50 hidden transition-opacity duration-300">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div id="modal-container" 
+             class="bg-gray-800 rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-hidden transform transition-all duration-300 scale-95 opacity-0">
+            
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between p-6 border-b border-gray-700">
+                <h3 id="modal-title" class="text-xl font-bold text-white"></h3>
+                <button id="modal-close" class="text-gray-400 hover:text-white transition-colors">
+                    <i data-feather="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            
+            <!-- Modal Body -->
+            <div id="modal-content" class="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+                <!-- Content will be loaded here -->
+            </div>
+            
+            <!-- Modal Footer -->
+            <div id="modal-footer" class="flex justify-end space-x-3 p-6 border-t border-gray-700 bg-gray-750">
+                <!-- Buttons will be added here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+class ModalSystem {
+    constructor() {
+        this.currentModal = null;
+        this.init();
+    }
+
+    init() {
+        this.setupEventListeners();
+    }
+
+    setupEventListeners() {
+        // Close modal on overlay click
+        document.getElementById('modal-overlay').addEventListener('click', (e) => {
+            if (e.target.id === 'modal-overlay') {
+                this.close();
+            }
+        });
+
+        // Close modal on close button click
+        document.getElementById('modal-close').addEventListener('click', () => {
+            this.close();
+        });
+
+        // Close modal on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.currentModal) {
+                this.close();
+            }
+        });
+    }
+
+    show(config) {
+        this.currentModal = config;
+        
+        const overlay = document.getElementById('modal-overlay');
+        const container = document.getElementById('modal-container');
+        const title = document.getElementById('modal-title');
+        const content = document.getElementById('modal-content');
+        const footer = document.getElementById('modal-footer');
+
+        // Set title
+        title.textContent = config.title || '';
+
+        // Set content
+        if (typeof config.content === 'string') {
+            content.innerHTML = config.content;
+        } else if (config.content instanceof HTMLElement) {
+            content.innerHTML = '';
+            content.appendChild(config.content);
+        }
+
+        // Set up footer buttons
+        footer.innerHTML = '';
+        if (config.buttons) {
+            config.buttons.forEach(buttonConfig => {
+                const button = document.createElement('button');
+                button.className = `px-4 py-2 rounded-md font-medium transition-colors ${this.getButtonClass(buttonConfig.type)}`;
+                button.textContent = buttonConfig.text;
+                
+                if (buttonConfig.onClick) {
+                    button.addEventListener('click', () => {
+                        buttonConfig.onClick(this);
+                    });
+                } else {
+                    button.addEventListener('click', () => this.close());
+                }
+                
+                footer.appendChild(button);
+            });
+        } else {
+            // Default close button
+            const closeButton = document.createElement('button');
+            closeButton.className = 'px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md font-medium transition-colors';
+            closeButton.textContent = 'Закрыть';
+            closeButton.addEventListener('click', () => this.close());
+            footer.appendChild(closeButton);
+        }
+
+        // Show modal with animation
+        overlay.classList.remove('hidden');
+        setTimeout(() => {
+            overlay.classList.add('opacity-100');
+            container.classList.remove('scale-95', 'opacity-0');
+            container.classList.add('scale-100', 'opacity-100');
+        }, 10);
+
+        // Call onOpen callback
+        if (config.onOpen) {
+            config.onOpen(this);
+        }
+
+        // Update Feather icons
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
+    }
+
+    close() {
+        const overlay = document.getElementById('modal-overlay');
+        const container = document.getElementById('modal-container');
+
+        // Hide with animation
+        container.classList.remove('scale-100', 'opacity-100');
+        container.classList.add('scale-95', 'opacity-0');
+        
+        overlay.classList.remove('opacity-100');
+        
+        setTimeout(() => {
+            overlay.classList.add('hidden');
+            
+            // Call onClose callback
+            if (this.currentModal?.onClose) {
+                this.currentModal.onClose();
+            }
+            
+            this.currentModal = null;
+        }, 300);
+    }
+
+    getButtonClass(type) {
+        const classes = {
+            primary: 'bg-red-600 hover:bg-red-700 text-white',
+            secondary: 'bg-gray-600 hover:bg-gray-700 text-white',
+            success: 'bg-green-600 hover:bg-green-700 text-white',
+            danger: 'bg-red-600 hover:bg-red-700 text-white',
+            warning: 'bg-yellow-600 hover:bg-yellow-700 text-white'
+        };
+        return classes[type] || classes.secondary;
+    }
+
+    // Convenience methods for common modals
+    confirm(message, title = 'Подтверждение') {
+        return new Promise((resolve) => {
+            this.show({
+                title,
+                content: message,
+                buttons: [
+                    {
+                        text: 'Отмена',
+                        type: 'secondary',
+                        onClick: () => {
+                            this.close();
+                            resolve(false);
+                        }
+                    },
+                    {
+                        text: 'Подтвердить',
+                        type: 'primary',
+                        onClick: () => {
+                            this.close();
+                            resolve(true);
+                        }
+                    }
+                ]
+            });
+        });
+    }
+
+    alert(message, title = 'Уведомление') {
+        return new Promise((resolve) => {
+            this.show({
+                title,
+                content: message,
+                buttons: [
+                    {
+                        text: 'OK',
+                        type: 'primary',
+                        onClick: () => {
+                            this.close();
+                            resolve();
+                        }
+                    }
+                ]
+            });
+        });
+    }
+
+    prompt(message, defaultValue = '', title = 'Ввод данных') {
+        return new Promise((resolve) => {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'w-full form-input mt-2';
+            input.value = defaultValue;
+            input.placeholder = 'Введите значение...';
+
+            const content = document.createElement('div');
+            content.innerHTML = `<p>${message}</p>`;
+            content.appendChild(input);
+
+            this.show({
+                title,
+                content,
+                buttons: [
+                    {
+                        text: 'Отмена',
+                        type: 'secondary',
+                        onClick: () => {
+                            this.close();
+                            resolve(null);
+                        }
+                    },
+                    {
+                        text: 'OK',
+                        type: 'primary',
+                        onClick: () => {
+                            this.close();
+                            resolve(input.value);
+                        }
+                    }
+                ],
+                onOpen: () => {
+                    input.focus();
+                    input.select();
+                }
+            });
+        });
+    }
+
+    loading(message = 'Загрузка...', title = 'Пожалуйста, подождите') {
+        this.show({
+            title,
+            content: `
+                <div class="flex items-center justify-center py-8">
+                    <div class="text-center">
+                        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto"></div>
+                        <p class="mt-4 text-gray-300">${message}</p>
+                    </div>
+                </div>
+            `,
+            buttons: [] // No buttons for loading modal
+        });
+    }
+
+    // Method to update modal content dynamically
+    updateContent(newContent) {
+        const content = document.getElementById('modal-content');
+        if (typeof newContent === 'string') {
+            content.innerHTML = newContent;
+        } else if (newContent instanceof HTMLElement) {
+            content.innerHTML = '';
+            content.appendChild(newContent);
+        }
+        
+        // Update Feather icons
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
+    }
+
+    // Method to set modal size
+    setSize(size) {
+        const container = document.getElementById('modal-container');
+        const sizes = {
+            sm: 'max-w-sm',
+            md: 'max-w-md',
+            lg: 'max-w-lg',
+            xl: 'max-w-xl',
+            '2xl': 'max-w-2xl',
+            full: 'max-w-full mx-4'
+        };
+        
+        // Remove all size classes
+        Object.values(sizes).forEach(sizeClass => {
+            container.classList.remove(sizeClass);
+        });
+        
+        // Add new size class
+        container.classList.add(sizes[size] || sizes.md);
+    }
+}
+
+// Initialize modal system
+document.addEventListener('DOMContentLoaded', () => {
+    window.modalSystem = new ModalSystem();
+});
+
+// Global helper functions
+window.showModal = (config) => {
+    if (window.modalSystem) {
+        window.modalSystem.show(config);
+    }
+};
+
+window.showConfirm = (message, title) => {
+    if (window.modalSystem) {
+        return window.modalSystem.confirm(message, title);
+    }
+    return Promise.resolve(confirm(message));
+};
+
+window.showAlert = (message, title) => {
+    if (window.modalSystem) {
+        return window.modalSystem.alert(message, title);
+    }
+    return Promise.resolve(alert(message));
+};
+
+window.showPrompt = (message, defaultValue, title) => {
+    if (window.modalSystem) {
+        return window.modalSystem.prompt(message, defaultValue, title);
+    }
+    return Promise.resolve(prompt(message, defaultValue));
+};
+
+window.showLoading = (message, title) => {
+    if (window.modalSystem) {
+        window.modalSystem.loading(message, title);
+    }
+};
+
+window.hideLoading = () => {
+    if (window.modalSystem) {
+        window.modalSystem.close();
+    }
+};
+</script>

@@ -1,0 +1,1060 @@
+<!-- frontend/pages/admin.html -->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CyberCTF Arena - Администрирование</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="/assets/css/animations.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+        
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            background-color: #262626;
+            color: #FFFFFF;
+        }
+        
+        .admin-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .admin-card:hover {
+            border-color: #EA000F;
+            box-shadow: 0 8px 25px rgba(234, 0, 15, 0.2);
+        }
+        
+        .nav-tab {
+            transition: all 0.3s ease;
+            border-bottom: 2px solid transparent;
+        }
+        
+        .nav-tab.active {
+            border-bottom-color: #EA000F;
+            color: #EA000F;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, rgba(234, 0, 15, 0.1), rgba(139, 0, 0, 0.1));
+            border: 1px solid rgba(234, 0, 15, 0.3);
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-900">
+    <!-- Header -->
+    <div id="header-container"></div>
+
+    <!-- Main Content -->
+    <div class="container mx-auto px-4 py-8">
+        <div class="mb-8">
+            <h1 class="text-4xl font-bold mb-2">Панель управления</h1>
+            <p class="text-gray-400">Управление платформой CyberCTF Arena</p>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="flex space-x-8 border-b border-gray-700 mb-8">
+            <button class="nav-tab py-3 px-4 font-medium active" data-tab="dashboard">
+                <i data-feather="home" class="w-4 h-4 mr-2 inline"></i>
+                Дашборд
+            </button>
+            <button class="nav-tab py-3 px-4 font-medium" data-tab="users">
+                <i data-feather="users" class="w-4 h-4 mr-2 inline"></i>
+                Пользователи
+            </button>
+            <button class="nav-tab py-3 px-4 font-medium" data-tab="teams">
+                <i data-feather="award" class="w-4 h-4 mr-2 inline"></i>
+                Команды
+            </button>
+            <button class="nav-tab py-3 px-4 font-medium" data-tab="challenges">
+                <i data-feather="flag" class="w-4 h-4 mr-2 inline"></i>
+                Задания
+            </button>
+            <button class="nav-tab py-3 px-4 font-medium" data-tab="submissions">
+                <i data-feather="send" class="w-4 h-4 mr-2 inline"></i>
+                Отправки
+            </button>
+            <button class="nav-tab py-3 px-4 font-medium" data-tab="monitoring">
+                <i data-feather="activity" class="w-4 h-4 mr-2 inline"></i>
+                Мониторинг
+            </button>
+        </div>
+
+        <!-- Dashboard Tab -->
+        <div id="dashboard-tab" class="tab-content">
+            <!-- Statistics Cards -->
+            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="stat-card rounded-2xl p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="text-2xl font-bold" id="stats-users">0</div>
+                            <div class="text-gray-400 text-sm">Пользователей</div>
+                        </div>
+                        <div class="w-12 h-12 bg-red-600 rounded-lg flex items-center justify-center">
+                            <i data-feather="users" class="w-6 h-6 text-white"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="stat-card rounded-2xl p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="text-2xl font-bold" id="stats-teams">0</div>
+                            <div class="text-gray-400 text-sm">Команд</div>
+                        </div>
+                        <div class="w-12 h-12 bg-red-600 rounded-lg flex items-center justify-center">
+                            <i data-feather="award" class="w-6 h-6 text-white"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="stat-card rounded-2xl p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="text-2xl font-bold" id="stats-challenges">0</div>
+                            <div class="text-gray-400 text-sm">Заданий</div>
+                        </div>
+                        <div class="w-12 h-12 bg-red-600 rounded-lg flex items-center justify-center">
+                            <i data-feather="flag" class="w-6 h-6 text-white"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="stat-card rounded-2xl p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="text-2xl font-bold" id="stats-submissions">0</div>
+                            <div class="text-gray-400 text-sm">Отправок</div>
+                        </div>
+                        <div class="w-12 h-12 bg-red-600 rounded-lg flex items-center justify-center">
+                            <i data-feather="send" class="w-6 h-6 text-white"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts and Recent Activity -->
+            <div class="grid lg:grid-cols-2 gap-8">
+                <!-- Category Distribution -->
+                <div class="admin-card rounded-2xl p-6">
+                    <h3 class="text-xl font-bold mb-4">Распределение по категориям</h3>
+                    <div class="h-64">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Recent Activity -->
+                <div class="admin-card rounded-2xl p-6">
+                    <h3 class="text-xl font-bold mb-4">Последняя активность</h3>
+                    <div id="recent-activity" class="space-y-3">
+                        <!-- Activity will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Users Tab -->
+        <div id="users-tab" class="tab-content hidden">
+            <div class="admin-card rounded-2xl p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold">Управление пользователями</h3>
+                    <button class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors">
+                        <i data-feather="plus" class="w-4 h-4 mr-2 inline"></i>
+                        Добавить пользователя
+                    </button>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-gray-700">
+                                <th class="text-left py-3 px-4">ID</th>
+                                <th class="text-left py-3 px-4">Логин</th>
+                                <th class="text-left py-3 px-4">Email</th>
+                                <th class="text-left py-3 px-4">Команда</th>
+                                <th class="text-left py-3 px-4">Статус</th>
+                                <th class="text-left py-3 px-4">Роль</th>
+                                <th class="text-left py-3 px-4">Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-table">
+                            <!-- Users will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Teams Tab -->
+        <div id="teams-tab" class="tab-content hidden">
+            <div class="admin-card rounded-2xl p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold">Управление командами</h3>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-gray-700">
+                                <th class="text-left py-3 px-4">ID</th>
+                                <th class="text-left py-3 px-4">Название</th>
+                                <th class="text-left py-3 px-4">Участников</th>
+                                <th class="text-left py-3 px-4">Счет</th>
+                                <th class="text-left py-3 px-4">Страна</th>
+                                <th class="text-left py-3 px-4">Создана</th>
+                                <th class="text-left py-3 px-4">Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody id="teams-table">
+                            <!-- Teams will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Challenges Tab -->
+        <div id="challenges-tab" class="tab-content hidden">
+            <div class="admin-card rounded-2xl p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold">Управление заданиями</h3>
+                    <button onclick="showCreateChallengeModal()" 
+                            class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors">
+                        <i data-feather="plus" class="w-4 h-4 mr-2 inline"></i>
+                        Создать задание
+                    </button>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-gray-700">
+                                <th class="text-left py-3 px-4">ID</th>
+                                <th class="text-left py-3 px-4">Название</th>
+                                <th class="text-left py-3 px-4">Категория</th>
+                                <th class="text-left py-3 px-4">Сложность</th>
+                                <th class="text-left py-3 px-4">Очки</th>
+                                <th class="text-left py-3 px-4">Решений</th>
+                                <th class="text-left py-3 px-4">Статус</th>
+                                <th class="text-left py-3 px-4">Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody id="challenges-table">
+                            <!-- Challenges will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Submissions Tab -->
+        <div id="submissions-tab" class="tab-content hidden">
+            <div class="admin-card rounded-2xl p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold">Все отправки</h3>
+                    <div class="flex gap-2">
+                        <select id="submission-status-filter" class="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white">
+                            <option value="">Все статусы</option>
+                            <option value="accepted">Принятые</option>
+                            <option value="rejected">Отклоненные</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-gray-700">
+                                <th class="text-left py-3 px-4">ID</th>
+                                <th class="text-left py-3 px-4">Команда</th>
+                                <th class="text-left py-3 px-4">Пользователь</th>
+                                <th class="text-left py-3 px-4">Задание</th>
+                                <th class="text-left py-3 px-4">Флаг</th>
+                                <th class="text-left py-3 px-4">Статус</th>
+                                <th class="text-left py-3 px-4">Очки</th>
+                                <th class="text-left py-3 px-4">Время</th>
+                            </tr>
+                        </thead>
+                        <tbody id="submissions-table">
+                            <!-- Submissions will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Monitoring Tab -->
+        <div id="monitoring-tab" class="tab-content hidden">
+            <div class="grid lg:grid-cols-2 gap-8">
+                <!-- System Health -->
+                <div class="admin-card rounded-2xl p-6">
+                    <h3 class="text-xl font-bold mb-4">Состояние системы</h3>
+                    <div id="system-health" class="space-y-4">
+                        <!-- System health will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Services Status -->
+                <div class="admin-card rounded-2xl p-6">
+                    <h3 class="text-xl font-bold mb-4">Статус сервисов</h3>
+                    <div id="services-status" class="space-y-3">
+                        <!-- Services status will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Database Stats -->
+                <div class="admin-card rounded-2xl p-6 lg:col-span-2">
+                    <h3 class="text-xl font-bold mb-4">Статистика базы данных</h3>
+                    <div id="database-stats">
+                        <!-- Database stats will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Challenge Modal -->
+    <div id="create-challenge-modal" class="fixed inset-0 bg-black bg-opacity-75 z-50 hidden">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
+                <div class="flex items-center justify-between p-6 border-b border-gray-700">
+                    <h3 class="text-xl font-bold">Создание задания</h3>
+                    <button onclick="closeCreateChallengeModal()" class="text-gray-400 hover:text-white">
+                        <i data-feather="x" class="w-6 h-6"></i>
+                    </button>
+                </div>
+                <div class="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+                    <form id="create-challenge-form">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Название</label>
+                                <input type="text" name="title" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white" required>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Описание</label>
+                                <textarea name="description" rows="4" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white" required></textarea>
+                            </div>
+                            
+                            <div class="grid md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-300 mb-2">Категория</label>
+                                    <select name="category" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white" required>
+                                        <option value="">Выберите категорию</option>
+                                        <option value="WEB">WEB</option>
+                                        <option value="CRYPTO">CRYPTO</option>
+                                        <option value="FORENSICS">FORENSICS</option>
+                                        <option value="REVERSING">REVERSING</option>
+                                        <option value="PWN">PWN</option>
+                                        <option value="MISC">MISC</option>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-300 mb-2">Сложность</label>
+                                    <select name="difficulty" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white" required>
+                                        <option value="">Выберите сложность</option>
+                                        <option value="easy">Легкая</option>
+                                        <option value="medium">Средняя</option>
+                                        <option value="hard">Сложная</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="grid md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-300 mb-2">Очки</label>
+                                    <input type="number" name="points" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white" required>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-300 mb-2">Флаг</label>
+                                    <input type="text" name="flag" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white" required>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Подсказка</label>
+                                <textarea name="hint" rows="2" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white"></textarea>
+                            </div>
+                            
+                            <div class="flex items-center">
+                                <input type="checkbox" name="is_active" class="rounded bg-gray-700 border-gray-600 text-red-600 focus:ring-red-600" checked>
+                                <label class="ml-2 text-sm text-gray-300">Активное задание</label>
+                            </div>
+                        </div>
+                        
+                        <div class="flex gap-2 pt-6">
+                            <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors">
+                                Создать задание
+                            </button>
+                            <button type="button" onclick="closeCreateChallengeModal()" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors">
+                                Отмена
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/components/header.html" type="text/html" id="header-template"></script>
+    <script>
+        // Global variables
+        let categoryChart = null;
+
+        // Load header
+        fetch('/components/header.html')
+            .then(response => response.text())
+            .then(html => {
+                document.getElementById('header-container').innerHTML = html;
+                feather.replace();
+            });
+
+        // Check admin permissions
+        async function checkAdmin() {
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                window.location.href = '/pages/lk.html';
+                return false;
+            }
+
+            try {
+                const response = await fetch('/api/users/me', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    localStorage.removeItem('authToken');
+                    window.location.href = '/pages/lk.html';
+                    return false;
+                }
+
+                const user = await response.json();
+                if (!user.is_admin) {
+                    window.location.href = '/pages/arena.html';
+                    return false;
+                }
+
+                return true;
+            } catch (error) {
+                localStorage.removeItem('authToken');
+                window.location.href = '/pages/lk.html';
+                return false;
+            }
+        }
+
+        // Tab navigation
+        function setupTabs() {
+            const tabs = document.querySelectorAll('.nav-tab');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const tabName = tab.getAttribute('data-tab');
+                    
+                    // Update active tab
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    
+                    // Show corresponding content
+                    tabContents.forEach(content => content.classList.add('hidden'));
+                    document.getElementById(`${tabName}-tab`).classList.remove('hidden');
+                    
+                    // Load tab data
+                    loadTabData(tabName);
+                });
+            });
+        }
+
+        // Load dashboard data
+        async function loadDashboard() {
+            try {
+                const response = await fetch('/api/admin/dashboard', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    }
+                });
+                
+                const data = await response.json();
+                
+                // Update statistics
+                document.getElementById('stats-users').textContent = data.statistics.total_users;
+                document.getElementById('stats-teams').textContent = data.statistics.total_teams;
+                document.getElementById('stats-challenges').textContent = data.statistics.total_challenges;
+                document.getElementById('stats-submissions').textContent = data.statistics.total_submissions;
+                
+                // Update recent activity
+                const activityContainer = document.getElementById('recent-activity');
+                activityContainer.innerHTML = data.recent_activity.map(activity => `
+                    <div class="flex items-center justify-between p-3 bg-gray-750 rounded-lg">
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center mr-3">
+                                <i data-feather="${getActivityIcon(activity.type)}" class="w-4 h-4"></i>
+                            </div>
+                            <div>
+                                <div class="font-medium">${getActivityText(activity)}</div>
+                                <div class="text-xs text-gray-400">${new Date(activity.timestamp).toLocaleString()}</div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+                
+                feather.replace();
+                
+                // Create category chart
+                createCategoryChart(data.categories);
+                
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+            }
+        }
+
+        // Create category distribution chart
+        function createCategoryChart(categories) {
+            const ctx = document.getElementById('categoryChart').getContext('2d');
+            
+            if (categoryChart) {
+                categoryChart.destroy();
+            }
+            
+            const categoryNames = Object.keys(categories);
+            const challengeCounts = categoryNames.map(cat => categories[cat].total_challenges);
+            const solveCounts = categoryNames.map(cat => categories[cat].total_solves);
+            
+            categoryChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: categoryNames,
+                    datasets: [
+                        {
+                            label: 'Задания',
+                            data: challengeCounts,
+                            backgroundColor: '#EA000F',
+                            borderColor: '#EA000F',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Решения',
+                            data: solveCounts,
+                            backgroundColor: '#00FF00',
+                            borderColor: '#00FF00',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                color: '#9CA3AF'
+                            },
+                            grid: {
+                                color: '#374151'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#9CA3AF'
+                            },
+                            grid: {
+                                color: '#374151'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#9CA3AF'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Load users data
+        async function loadUsers() {
+            try {
+                const response = await fetch('/api/admin/users', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    }
+                });
+                
+                const users = await response.json();
+                
+                const table = document.getElementById('users-table');
+                table.innerHTML = users.map(user => `
+                    <tr class="border-b border-gray-700">
+                        <td class="py-3 px-4">${user.id}</td>
+                        <td class="py-3 px-4">
+                            <div class="font-medium">${user.username}</div>
+                            ${user.is_admin ? '<span class="text-xs bg-red-600 text-white px-2 py-1 rounded">Админ</span>' : ''}
+                        </td>
+                        <td class="py-3 px-4">${user.email}</td>
+                        <td class="py-3 px-4">${user.team || 'Без команды'}</td>
+                        <td class="py-3 px-4">
+                            <span class="px-2 py-1 rounded text-xs ${user.is_active ? 'bg-green-600' : 'bg-red-600'}">
+                                ${user.is_active ? 'Активен' : 'Неактивен'}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4">
+                            ${user.is_admin ? 'Администратор' : user.is_captain ? 'Капитан' : 'Участник'}
+                        </td>
+                        <td class="py-3 px-4">
+                            <div class="flex gap-2">
+                                <button onclick="toggleUser(${user.id})" class="text-blue-400 hover:text-blue-300">
+                                    <i data-feather="${user.is_active ? 'pause' : 'play'}" class="w-4 h-4"></i>
+                                </button>
+                                <button class="text-red-400 hover:text-red-300">
+                                    <i data-feather="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `).join('');
+                
+                feather.replace();
+                
+            } catch (error) {
+                console.error('Error loading users:', error);
+            }
+        }
+
+        // Load teams data
+        async function loadTeams() {
+            try {
+                const response = await fetch('/api/admin/teams', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    }
+                });
+                
+                const data = await response.json();
+                
+                const table = document.getElementById('teams-table');
+                table.innerHTML = data.teams.map(team => `
+                    <tr class="border-b border-gray-700">
+                        <td class="py-3 px-4">${team.id}</td>
+                        <td class="py-3 px-4 font-medium">${team.name}</td>
+                        <td class="py-3 px-4">${team.member_count}</td>
+                        <td class="py-3 px-4 font-bold text-green-500">${team.score}</td>
+                        <td class="py-3 px-4">${team.country || '-'}</td>
+                        <td class="py-3 px-4">${new Date(team.created_at).toLocaleDateString()}</td>
+                        <td class="py-3 px-4">
+                            <div class="flex gap-2">
+                                <button onclick="deleteTeam(${team.id})" class="text-red-400 hover:text-red-300">
+                                    <i data-feather="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `).join('');
+                
+                feather.replace();
+                
+            } catch (error) {
+                console.error('Error loading teams:', error);
+            }
+        }
+
+        // Load challenges data
+        async function loadChallenges() {
+            try {
+                const response = await fetch('/api/challenges/', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    }
+                });
+                
+                const challenges = await response.json();
+                
+                const table = document.getElementById('challenges-table');
+                table.innerHTML = challenges.map(challenge => `
+                    <tr class="border-b border-gray-700">
+                        <td class="py-3 px-4">${challenge.id}</td>
+                        <td class="py-3 px-4 font-medium">${challenge.title}</td>
+                        <td class="py-3 px-4">
+                            <span class="px-2 py-1 rounded text-xs bg-gray-600">${challenge.category}</span>
+                        </td>
+                        <td class="py-3 px-4">
+                            <span class="px-2 py-1 rounded text-xs ${getDifficultyColor(challenge.difficulty)}">
+                                ${getDifficultyText(challenge.difficulty)}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 font-bold text-green-500">${challenge.points}</td>
+                        <td class="py-3 px-4">${challenge.solved_count}</td>
+                        <td class="py-3 px-4">
+                            <span class="px-2 py-1 rounded text-xs ${challenge.is_active ? 'bg-green-600' : 'bg-red-600'}">
+                                ${challenge.is_active ? 'Активно' : 'Неактивно'}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4">
+                            <div class="flex gap-2">
+                                <button onclick="toggleChallenge(${challenge.id})" class="text-blue-400 hover:text-blue-300">
+                                    <i data-feather="${challenge.is_active ? 'pause' : 'play'}" class="w-4 h-4"></i>
+                                </button>
+                                <button class="text-red-400 hover:text-red-300">
+                                    <i data-feather="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `).join('');
+                
+                feather.replace();
+                
+            } catch (error) {
+                console.error('Error loading challenges:', error);
+            }
+        }
+
+        // Load submissions data
+        async function loadSubmissions() {
+            try {
+                const statusFilter = document.getElementById('submission-status-filter').value;
+                let url = '/api/admin/submissions';
+                if (statusFilter) {
+                    url += `?status=${statusFilter}`;
+                }
+                
+                const response = await fetch(url, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    }
+                });
+                
+                const data = await response.json();
+                
+                const table = document.getElementById('submissions-table');
+                table.innerHTML = data.submissions.map(submission => `
+                    <tr class="border-b border-gray-700">
+                        <td class="py-3 px-4">${submission.id}</td>
+                        <td class="py-3 px-4">${submission.team_name}</td>
+                        <td class="py-3 px-4">${submission.username}</td>
+                        <td class="py-3 px-4">${submission.challenge_title}</td>
+                        <td class="py-3 px-4 font-mono text-sm">${submission.flag}</td>
+                        <td class="py-3 px-4">
+                            <span class="px-2 py-1 rounded text-xs ${submission.status === 'accepted' ? 'bg-green-600' : 'bg-red-600'}">
+                                ${submission.status === 'accepted' ? 'Принято' : 'Отклонено'}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 font-bold text-green-500">${submission.points_awarded}</td>
+                        <td class="py-3 px-4 text-sm">${new Date(submission.submitted_at).toLocaleString()}</td>
+                    </tr>
+                `).join('');
+                
+            } catch (error) {
+                console.error('Error loading submissions:', error);
+            }
+        }
+
+        // Load monitoring data
+        async function loadMonitoring() {
+            try {
+                // Load system health
+                const healthResponse = await fetch('/api/monitoring/health', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    }
+                });
+                const health = await healthResponse.json();
+                
+                document.getElementById('system-health').innerHTML = `
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-gray-750 rounded-lg p-4">
+                            <div class="text-sm text-gray-400">CPU</div>
+                            <div class="text-xl font-bold">${health.system.cpu_usage}</div>
+                        </div>
+                        <div class="bg-gray-750 rounded-lg p-4">
+                            <div class="text-sm text-gray-400">Память</div>
+                            <div class="text-xl font-bold">${health.system.memory_usage}</div>
+                        </div>
+                        <div class="bg-gray-750 rounded-lg p-4">
+                            <div class="text-sm text-gray-400">Диск</div>
+                            <div class="text-xl font-bold">${health.system.disk_usage}</div>
+                        </div>
+                        <div class="bg-gray-750 rounded-lg p-4">
+                            <div class="text-sm text-gray-400">Контейнеры</div>
+                            <div class="text-xl font-bold">${health.docker.containers_running}/${health.docker.containers_total}</div>
+                        </div>
+                    </div>
+                `;
+                
+                // Load services status
+                const servicesResponse = await fetch('/api/monitoring/services', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    }
+                });
+                const servicesData = await servicesResponse.json();
+                
+                document.getElementById('services-status').innerHTML = servicesData.services.map(service => `
+                    <div class="flex items-center justify-between p-3 bg-gray-750 rounded-lg">
+                        <div class="flex items-center">
+                            <div class="w-3 h-3 rounded-full mr-3 ${service.status === 'online' ? 'bg-green-500' : 'bg-red-500'}"></div>
+                            <div>
+                                <div class="font-medium">${service.name}</div>
+                                <div class="text-xs text-gray-400">${service.host}:${service.port}</div>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-sm ${service.status === 'online' ? 'text-green-500' : 'text-red-500'}">${service.status}</div>
+                            ${service.response_time ? `<div class="text-xs text-gray-400">${service.response_time}ms</div>` : ''}
+                        </div>
+                    </div>
+                `).join('');
+                
+                // Load database stats
+                const dbResponse = await fetch('/api/monitoring/database', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    }
+                });
+                const dbStats = await dbResponse.json();
+                
+                document.getElementById('database-stats').innerHTML = `
+                    <div class="grid md:grid-cols-4 gap-4">
+                        <div class="bg-gray-750 rounded-lg p-4">
+                            <div class="text-sm text-gray-400">Размер БД</div>
+                            <div class="text-xl font-bold">${dbStats.database_size_human}</div>
+                        </div>
+                        <div class="bg-gray-750 rounded-lg p-4">
+                            <div class="text-sm text-gray-400">Подключения</div>
+                            <div class="text-xl font-bold">${dbStats.active_connections}</div>
+                        </div>
+                        <div class="bg-gray-750 rounded-lg p-4">
+                            <div class="text-sm text-gray-400">Пользователи</div>
+                            <div class="text-xl font-bold">${dbStats.table_stats.users}</div>
+                        </div>
+                        <div class="bg-gray-750 rounded-lg p-4">
+                            <div class="text-sm text-gray-400">Отправки</div>
+                            <div class="text-xl font-bold">${dbStats.table_stats.submissions}</div>
+                        </div>
+                    </div>
+                `;
+                
+            } catch (error) {
+                console.error('Error loading monitoring data:', error);
+            }
+        }
+
+        // Utility functions
+        function getActivityIcon(activityType) {
+            const icons = {
+                'user_registration': 'user-plus',
+                'challenge_solve': 'flag',
+                'team_creation': 'users',
+                'flag_submission': 'send'
+            };
+            return icons[activityType] || 'activity';
+        }
+
+        function getActivityText(activity) {
+            if (activity.type === 'user_registration') {
+                return `Новый пользователь: ${activity.username}`;
+            } else if (activity.type === 'challenge_solve') {
+                return `${activity.team_name} решили "${activity.challenge_title}"`;
+            } else if (activity.type === 'flag_submission') {
+                return `${activity.username} отправил флаг`;
+            }
+            return 'Новая активность';
+        }
+
+        function getDifficultyColor(difficulty) {
+            const colors = {
+                'easy': 'bg-green-600',
+                'medium': 'bg-yellow-600',
+                'hard': 'bg-red-600'
+            };
+            return colors[difficulty] || 'bg-gray-600';
+        }
+
+        function getDifficultyText(difficulty) {
+            const texts = {
+                'easy': 'Легко',
+                'medium': 'Средне',
+                'hard': 'Сложно'
+            };
+            return texts[difficulty] || difficulty;
+        }
+
+        // Tab data loader
+        function loadTabData(tabName) {
+            switch (tabName) {
+                case 'dashboard':
+                    loadDashboard();
+                    break;
+                case 'users':
+                    loadUsers();
+                    break;
+                case 'teams':
+                    loadTeams();
+                    break;
+                case 'challenges':
+                    loadChallenges();
+                    break;
+                case 'submissions':
+                    loadSubmissions();
+                    break;
+                case 'monitoring':
+                    loadMonitoring();
+                    break;
+            }
+        }
+
+        // Modal functions
+        function showCreateChallengeModal() {
+            document.getElementById('create-challenge-modal').classList.remove('hidden');
+        }
+
+        function closeCreateChallengeModal() {
+            document.getElementById('create-challenge-modal').classList.add('hidden');
+        }
+
+        // Form handlers
+        document.getElementById('create-challenge-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+            data.points = parseInt(data.points);
+            data.is_active = data.is_active === 'on';
+            
+            try {
+                const response = await fetch('/api/admin/challenges', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                if (response.ok) {
+                    if (window.showNotification) {
+                        window.showNotification('Задание успешно создано', 'success');
+                    }
+                    closeCreateChallengeModal();
+                    loadChallenges();
+                    e.target.reset();
+                } else {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Ошибка создания задания');
+                }
+            } catch (error) {
+                console.error('Error creating challenge:', error);
+                if (window.showNotification) {
+                    window.showNotification(error.message, 'error');
+                }
+            }
+        });
+
+        // Admin actions
+        async function toggleUser(userId) {
+            try {
+                const response = await fetch(`/api/admin/users/${userId}/toggle`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    }
+                });
+                
+                if (response.ok) {
+                    if (window.showNotification) {
+                        window.showNotification('Статус пользователя изменен', 'success');
+                    }
+                    loadUsers();
+                }
+            } catch (error) {
+                console.error('Error toggling user:', error);
+                if (window.showNotification) {
+                    window.showNotification('Ошибка изменения статуса', 'error');
+                }
+            }
+        }
+
+        async function toggleChallenge(challengeId) {
+            try {
+                const response = await fetch(`/api/admin/challenges/${challengeId}/toggle`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    }
+                });
+                
+                if (response.ok) {
+                    if (window.showNotification) {
+                        window.showNotification('Статус задания изменен', 'success');
+                    }
+                    loadChallenges();
+                }
+            } catch (error) {
+                console.error('Error toggling challenge:', error);
+                if (window.showNotification) {
+                    window.showNotification('Ошибка изменения статуса', 'error');
+                }
+            }
+        }
+
+        async function deleteTeam(teamId) {
+            if (!confirm('Вы уверены, что хотите удалить эту команду?')) return;
+            
+            try {
+                const response = await fetch(`/api/admin/teams/${teamId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    }
+                });
+                
+                if (response.ok) {
+                    if (window.showNotification) {
+                        window.showNotification('Команда удалена', 'success');
+                    }
+                    loadTeams();
+                }
+            } catch (error) {
+                console.error('Error deleting team:', error);
+                if (window.showNotification) {
+                    window.showNotification('Ошибка удаления команды', 'error');
+                }
+            }
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Check admin permissions
+            if (!await checkAdmin()) return;
+            
+            // Setup tabs
+            setupTabs();
+            
+            // Load initial dashboard data
+            loadDashboard();
+            
+            // Setup event listeners
+            document.getElementById('submission-status-filter').addEventListener('change', loadSubmissions);
+            
+            // Close modal on overlay click
+            document.getElementById('create-challenge-modal').addEventListener('click', function(e) {
+                if (e.target === this) closeCreateChallengeModal();
+            });
+            
+            feather.replace();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,354 @@
+<!-- frontend/pages/index.html -->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CyberCTF Arena - Главная</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <link rel="stylesheet" href="/assets/css/animations.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+        
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%);
+            color: #ffffff;
+            min-height: 100vh;
+        }
+        
+        .hero-gradient {
+            background: linear-gradient(135deg, #EA000F 0%, #8B0000 100%);
+        }
+        
+        .feature-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+            border-color: #EA000F;
+            box-shadow: 0 10px 30px rgba(234, 0, 15, 0.2);
+        }
+        
+        .countdown-number {
+            background: rgba(234, 0, 15, 0.1);
+            border: 2px solid #EA000F;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+    <!-- Header -->
+    <div id="header-container">
+        <!-- Header будет загружен через JavaScript -->
+    </div>
+
+    <!-- Hero Section -->
+    <section class="flex-1 py-20">
+        <div class="container mx-auto px-4">
+            <div class="text-center mb-16 fade-in">
+                <div class="inline-block mb-6">
+                    <div class="w-20 h-20 hero-gradient rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <span class="text-white font-bold text-2xl">CTF</span>
+                    </div>
+                </div>
+                
+                <h1 class="text-5xl md:text-7xl font-bold mb-6">
+                    <span class="text-white">Cyber</span>
+                    <span class="text-red-600">CTF</span>
+                    <span class="text-white"> Arena</span>
+                </h1>
+                
+                <p class="text-xl md:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto">
+                    Современная платформа для киберсоревнований. 
+                    Проверьте свои навыки в реальных условиях.
+                </p>
+                
+                <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                    <a href="/pages/arena.html" 
+                       class="bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-lg font-bold text-lg transition-all duration-300 transform hover:scale-105">
+                        Начать соревнование
+                    </a>
+                    <a href="/pages/lk.html" 
+                       class="border border-gray-600 hover:border-red-600 text-gray-300 hover:text-white px-8 py-4 rounded-lg font-bold text-lg transition-all duration-300">
+                        Войти в систему
+                    </a>
+                </div>
+            </div>
+
+            <!-- Countdown Timer -->
+            <div class="max-w-2xl mx-auto mb-16 text-center">
+                <h3 class="text-2xl font-bold mb-6 text-gray-300">До начала следующего соревнования</h3>
+                <div id="countdown" class="flex justify-center gap-4">
+                    <div class="text-center">
+                        <div class="countdown-number w-16 h-16 rounded-lg flex items-center justify-center mb-2">
+                            <span id="days" class="text-2xl font-bold text-white">00</span>
+                        </div>
+                        <span class="text-sm text-gray-400">Дней</span>
+                    </div>
+                    <div class="text-center">
+                        <div class="countdown-number w-16 h-16 rounded-lg flex items-center justify-center mb-2">
+                            <span id="hours" class="text-2xl font-bold text-white">00</span>
+                        </div>
+                        <span class="text-sm text-gray-400">Часов</span>
+                    </div>
+                    <div class="text-center">
+                        <div class="countdown-number w-16 h-16 rounded-lg flex items-center justify-center mb-2">
+                            <span id="minutes" class="text-2xl font-bold text-white">00</span>
+                        </div>
+                        <span class="text-sm text-gray-400">Минут</span>
+                    </div>
+                    <div class="text-center">
+                        <div class="countdown-number w-16 h-16 rounded-lg flex items-center justify-center mb-2">
+                            <span id="seconds" class="text-2xl font-bold text-white">00</span>
+                        </div>
+                        <span class="text-sm text-gray-400">Секунд</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Features Grid -->
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
+                <div class="feature-card rounded-xl p-6 slide-in-up">
+                    <div class="w-12 h-12 bg-red-600 rounded-lg flex items-center justify-center mb-4">
+                        <i data-feather="shield" class="w-6 h-6 text-white"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Безопасность</h3>
+                    <p class="text-gray-400">
+                        Изолированные среды для заданий, защита от атак и полный аудит действий.
+                    </p>
+                </div>
+                
+                <div class="feature-card rounded-xl p-6 slide-in-up" style="animation-delay: 0.1s">
+                    <div class="w-12 h-12 bg-red-600 rounded-lg flex items-center justify-center mb-4">
+                        <i data-feather="zap" class="w-6 h-6 text-white"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Реальное время</h3>
+                    <p class="text-gray-400">
+                        Мгновенные обновления рейтинга, уведомления и чат через WebSocket.
+                    </p>
+                </div>
+                
+                <div class="feature-card rounded-xl p-6 slide-in-up" style="animation-delay: 0.2s">
+                    <div class="w-12 h-12 bg-red-600 rounded-lg flex items-center justify-center mb-4">
+                        <i data-feather="box" class="w-6 h-6 text-white"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Docker задания</h3>
+                    <p class="text-gray-400">
+                        Динамические задания в изолированных контейнерах для каждого участника.
+                    </p>
+                </div>
+                
+                <div class="feature-card rounded-xl p-6 slide-in-up" style="animation-delay: 0.3s">
+                    <div class="w-12 h-12 bg-red-600 rounded-lg flex items-center justify-center mb-4">
+                        <i data-feather="bar-chart-2" class="w-6 h-6 text-white"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Аналитика</h3>
+                    <p class="text-gray-400">
+                        Подробная статистика, рекомендации и анализ сильных сторон команд.
+                    </p>
+                </div>
+                
+                <div class="feature-card rounded-xl p-6 slide-in-up" style="animation-delay: 0.4s">
+                    <div class="w-12 h-12 bg-red-600 rounded-lg flex items-center justify-center mb-4">
+                        <i data-feather="users" class="w-6 h-6 text-white"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Командная игра</h3>
+                    <p class="text-gray-400">
+                        Создавайте команды, приглашайте участников и работайте вместе.
+                    </p>
+                </div>
+                
+                <div class="feature-card rounded-xl p-6 slide-in-up" style="animation-delay: 0.5s">
+                    <div class="w-12 h-12 bg-red-600 rounded-lg flex items-center justify-center mb-4">
+                        <i data-feather="award" class="w-6 h-6 text-white"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Соревнования</h3>
+                    <p class="text-gray-400">
+                        Регулярные турниры с автоматическим подсчетом очков и наградами.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Live Stats -->
+            <div class="bg-gray-800 rounded-2xl p-8 mb-16">
+                <h2 class="text-3xl font-bold text-center mb-8">Статистика платформы</h2>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+                    <div>
+                        <div class="text-3xl font-bold text-red-600 mb-2" id="stats-users">0</div>
+                        <div class="text-gray-400">Участников</div>
+                    </div>
+                    <div>
+                        <div class="text-3xl font-bold text-red-600 mb-2" id="stats-teams">0</div>
+                        <div class="text-gray-400">Команд</div>
+                    </div>
+                    <div>
+                        <div class="text-3xl font-bold text-red-600 mb-2" id="stats-challenges">0</div>
+                        <div class="text-gray-400">Заданий</div>
+                    </div>
+                    <div>
+                        <div class="text-3xl font-bold text-red-600 mb-2" id="stats-solves">0</div>
+                        <div class="text-gray-400">Решений</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="bg-gray-800 rounded-2xl p-8">
+                <h2 class="text-3xl font-bold text-center mb-8">Последние решения</h2>
+                <div id="recent-activity" class="space-y-4">
+                    <!-- Активность будет загружена через JavaScript -->
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 border-t border-gray-800 py-8">
+        <div class="container mx-auto px-4 text-center">
+            <div class="flex justify-center items-center mb-4">
+                <div class="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center mr-3">
+                    <span class="text-white font-bold text-sm">CTF</span>
+                </div>
+                <span class="text-xl font-bold">
+                    <span class="text-white">Cyber</span>
+                    <span class="text-red-600">CTF</span>
+                </span>
+            </div>
+            <p class="text-gray-400 mb-4">
+                Современная платформа для проведения CTF-соревнований
+            </p>
+            <p class="text-gray-500 text-sm">
+                &copy; 2024 CyberCTF Arena. Все права защищены.
+            </p>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="/components/header.html" type="text/html" id="header-template"></script>
+    <script>
+        // Загрузка header
+        fetch('/components/header.html')
+            .then(response => response.text())
+            .then(html => {
+                document.getElementById('header-container').innerHTML = html;
+                feather.replace();
+                
+                // Инициализация приложения после загрузки header
+                if (window.ctfApp) {
+                    window.ctfApp.init();
+                }
+            });
+
+        // Countdown Timer
+        function updateCountdown() {
+            // Установим дату начала следующего соревнования (через 7 дней)
+            const targetDate = new Date();
+            targetDate.setDate(targetDate.getDate() + 7);
+            targetDate.setHours(12, 0, 0, 0);
+            
+            const now = new Date().getTime();
+            const distance = targetDate - now;
+            
+            if (distance < 0) {
+                document.getElementById('countdown').innerHTML = '<div class="text-2xl text-red-600 font-bold">Соревнование началось!</div>';
+                return;
+            }
+            
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+            
+            document.getElementById('days').textContent = days.toString().padStart(2, '0');
+            document.getElementById('hours').textContent = hours.toString().padStart(2, '0');
+            document.getElementById('minutes').textContent = minutes.toString().padStart(2, '0');
+            document.getElementById('seconds').textContent = seconds.toString().padStart(2, '0');
+        }
+        
+        // Статистика платформы
+        async function loadPlatformStats() {
+            try {
+                const response = await fetch('/api/analytics/global');
+                const data = await response.json();
+                
+                document.getElementById('stats-users').textContent = data.total_users || '0';
+                document.getElementById('stats-teams').textContent = data.total_teams || '0';
+                document.getElementById('stats-challenges').textContent = data.total_challenges || '0';
+                document.getElementById('stats-solves').textContent = data.total_submissions || '0';
+            } catch (error) {
+                console.error('Error loading platform stats:', error);
+                // Установим демо значения
+                document.getElementById('stats-users').textContent = '1.2k';
+                document.getElementById('stats-teams').textContent = '256';
+                document.getElementById('stats-challenges').textContent = '89';
+                document.getElementById('stats-solves').textContent = '15.7k';
+            }
+        }
+        
+        // Последняя активность
+        async function loadRecentActivity() {
+            try {
+                const response = await fetch('/api/submissions/recent?limit=5');
+                const data = await response.json();
+                
+                const container = document.getElementById('recent-activity');
+                if (data.submissions && data.submissions.length > 0) {
+                    container.innerHTML = data.submissions.map(submission => `
+                        <div class="flex items-center justify-between p-4 bg-gray-750 rounded-lg">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center mr-3">
+                                    <i data-feather="flag" class="w-4 h-4 text-green-500"></i>
+                                </div>
+                                <div>
+                                    <div class="font-semibold">${submission.team_name}</div>
+                                    <div class="text-sm text-gray-400">${submission.challenge_title}</div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-green-500 font-bold">+${submission.points}</div>
+                                <div class="text-sm text-gray-400">${new Date(submission.submitted_at).toLocaleTimeString()}</div>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = `
+                        <div class="text-center text-gray-500 py-8">
+                            <i data-feather="clock" class="w-12 h-12 mx-auto mb-4"></i>
+                            <p>Пока нет активностей</p>
+                        </div>
+                    `;
+                }
+                
+                feather.replace();
+            } catch (error) {
+                console.error('Error loading recent activity:', error);
+                document.getElementById('recent-activity').innerHTML = `
+                    <div class="text-center text-gray-500 py-8">
+                        <p>Не удалось загрузить активность</p>
+                    </div>
+                `;
+            }
+        }
+        
+        // Инициализация
+        document.addEventListener('DOMContentLoaded', function() {
+            updateCountdown();
+            setInterval(updateCountdown, 1000);
+            
+            loadPlatformStats();
+            loadRecentActivity();
+            
+            // Обновляем статистику каждые 30 секунд
+            setInterval(loadPlatformStats, 30000);
+            setInterval(loadRecentActivity, 10000);
+            
+            feather.replace();
+        });
+    </script>
+</body>
+</html>

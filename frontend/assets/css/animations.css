@@ -1,0 +1,376 @@
+/* frontend/assets/css/animations.css */
+/* CSS анимации и переходы для CyberCTF Arena */
+
+/* Base transitions */
+* {
+    transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Fade animations */
+.fade-in {
+    animation: fadeIn 0.3s ease-in;
+}
+
+.fade-out {
+    animation: fadeOut 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+/* Slide animations */
+.slide-in-left {
+    animation: slideInLeft 0.3s ease-out;
+}
+
+.slide-in-right {
+    animation: slideInRight 0.3s ease-out;
+}
+
+.slide-in-up {
+    animation: slideInUp 0.3s ease-out;
+}
+
+.slide-in-down {
+    animation: slideInDown 0.3s ease-out;
+}
+
+@keyframes slideInLeft {
+    from { 
+        transform: translateX(-100%);
+        opacity: 0;
+    }
+    to { 
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideInRight {
+    from { 
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to { 
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideInUp {
+    from { 
+        transform: translateY(100%);
+        opacity: 0;
+    }
+    to { 
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideInDown {
+    from { 
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+    to { 
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Pulse animation for notifications */
+.pulse {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+/* Bounce animation */
+.bounce {
+    animation: bounce 0.5s;
+}
+
+@keyframes bounce {
+    0%, 20%, 53%, 80%, 100% {
+        transform: translate3d(0,0,0);
+    }
+    40%, 43% {
+        transform: translate3d(0,-8px,0);
+    }
+    70% {
+        transform: translate3d(0,-4px,0);
+    }
+    90% {
+        transform: translate3d(0,-2px,0);
+    }
+}
+
+/* Shake animation for errors */
+.shake {
+    animation: shake 0.5s;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+    20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+/* Spin animation */
+.spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Score update animation */
+.score-update {
+    animation: scoreUpdate 1s ease-in-out;
+}
+
+@keyframes scoreUpdate {
+    0% { 
+        transform: scale(1);
+        color: inherit;
+    }
+    50% { 
+        transform: scale(1.2);
+        color: #00FF00;
+    }
+    100% { 
+        transform: scale(1);
+        color: inherit;
+    }
+}
+
+/* Progress bar animation */
+.progress-bar {
+    animation: progressBar 1.5s ease-in-out;
+}
+
+@keyframes progressBar {
+    from { width: 0%; }
+    to { width: 100%; }
+}
+
+/* Notification toast animation */
+.toast-enter {
+    animation: toastEnter 0.3s ease-out;
+}
+
+.toast-exit {
+    animation: toastExit 0.3s ease-in;
+}
+
+@keyframes toastEnter {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes toastExit {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+/* Hover animations */
+.hover-lift {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(234, 0, 15, 0.2);
+}
+
+.hover-glow {
+    transition: box-shadow 0.2s ease;
+}
+
+.hover-glow:hover {
+    box-shadow: 0 0 15px rgba(234, 0, 15, 0.5);
+}
+
+/* Button animations */
+.btn-press {
+    transition: transform 0.1s ease;
+}
+
+.btn-press:active {
+    transform: scale(0.95);
+}
+
+/* Loading animations */
+.loading-dots::after {
+    content: '';
+    animation: loadingDots 1.5s infinite;
+}
+
+@keyframes loadingDots {
+    0%, 20% { content: '.'; }
+    40% { content: '..'; }
+    60%, 100% { content: '...'; }
+}
+
+/* Connection status animations */
+.connection-pulse {
+    animation: connectionPulse 2s ease-in-out infinite;
+}
+
+@keyframes connectionPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* Challenge card animations */
+.challenge-card {
+    transition: all 0.3s ease;
+}
+
+.challenge-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.challenge-card.solved {
+    border-left: 4px solid #00FF00;
+}
+
+.challenge-card.unsolved {
+    border-left: 4px solid #EA000F;
+}
+
+/* Flag submission animation */
+.flag-submit {
+    transition: all 0.3s ease;
+}
+
+.flag-submit.loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.flag-submit.success {
+    background-color: #00FF00 !important;
+}
+
+.flag-submit.error {
+    background-color: #FF0000 !important;
+    animation: shake 0.5s;
+}
+
+/* Chart animations */
+.chart-fade-in {
+    animation: chartFadeIn 0.8s ease-out;
+}
+
+@keyframes chartFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Countdown animation */
+.countdown-pulse {
+    animation: countdownPulse 1s ease-in-out infinite;
+}
+
+@keyframes countdownPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+/* First blood animation */
+.first-blood {
+    animation: firstBlood 2s ease-in-out;
+}
+
+@keyframes firstBlood {
+    0% {
+        background-color: transparent;
+        transform: scale(1);
+    }
+    25% {
+        background-color: rgba(234, 0, 15, 0.2);
+        transform: scale(1.1);
+    }
+    50% {
+        background-color: rgba(234, 0, 15, 0.4);
+        transform: scale(1.05);
+    }
+    100% {
+        background-color: transparent;
+        transform: scale(1);
+    }
+}
+
+/* Team ranking animation */
+.ranking-change-up {
+    animation: rankingUp 0.5s ease-out;
+}
+
+.ranking-change-down {
+    animation: rankingDown 0.5s ease-out;
+}
+
+@keyframes rankingUp {
+    from {
+        background-color: rgba(0, 255, 0, 0.2);
+        transform: translateY(-10px);
+    }
+    to {
+        background-color: transparent;
+        transform: translateY(0);
+    }
+}
+
+@keyframes rankingDown {
+    from {
+        background-color: rgba(255, 0, 0, 0.2);
+        transform: translateY(10px);
+    }
+    to {
+        background-color: transparent;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive animations */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}

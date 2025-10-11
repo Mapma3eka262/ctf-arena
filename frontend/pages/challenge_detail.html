@@ -1,0 +1,604 @@
+<!-- frontend/pages/challenge_detail.html -->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CyberCTF Arena - Детали задания</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <link rel="stylesheet" href="/assets/css/animations.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+        
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            background-color: #262626;
+            color: #FFFFFF;
+        }
+        
+        .challenge-header {
+            background: linear-gradient(135deg, rgba(234, 0, 15, 0.1), rgba(139, 0, 0, 0.1));
+            border: 1px solid rgba(234, 0, 15, 0.3);
+        }
+        
+        .info-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .solves-timeline {
+            border-left: 2px solid #EA000F;
+        }
+        
+        .solve-item {
+            position: relative;
+        }
+        
+        .solve-item::before {
+            content: '';
+            position: absolute;
+            left: -9px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 8px;
+            height: 8px;
+            background: #EA000F;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-900">
+    <!-- Header -->
+    <div id="header-container"></div>
+
+    <!-- Main Content -->
+    <div class="container mx-auto px-4 py-8">
+        <!-- Back Button -->
+        <div class="mb-6">
+            <a href="/pages/arena.html" class="inline-flex items-center text-red-500 hover:text-red-400 transition-colors">
+                <i data-feather="arrow-left" class="w-4 h-4 mr-2"></i>
+                Назад к арене
+            </a>
+        </div>
+
+        <!-- Challenge Content -->
+        <div id="challenge-content">
+            <div class="text-center py-12">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
+                <p class="text-gray-400">Загрузка задания...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Submit Flag Modal -->
+    <div id="submit-flag-modal" class="fixed inset-0 bg-black bg-opacity-75 z-50 hidden">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-gray-800 rounded-2xl max-w-md w-full">
+                <div class="flex items-center justify-between p-6 border-b border-gray-700">
+                    <h3 class="text-xl font-bold">Отправка флага</h3>
+                    <button onclick="closeSubmitFlagModal()" class="text-gray-400 hover:text-white">
+                        <i data-feather="x" class="w-6 h-6"></i>
+                    </button>
+                </div>
+                <div class="p-6">
+                    <form id="submit-flag-form">
+                        <input type="hidden" id="modal-challenge-id">
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Флаг</label>
+                            <input type="text" id="flag-input" 
+                                   class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-500"
+                                   placeholder="CTF{...}"
+                                   required>
+                        </div>
+                        <div class="flex gap-2">
+                            <button type="submit" 
+                                    class="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 px-4 rounded-lg font-bold transition-colors">
+                                Отправить
+                            </button>
+                            <button type="button" 
+                                    onclick="closeSubmitFlagModal()"
+                                    class="bg-gray-600 hover:bg-gray-700 text-white py-3 px-4 rounded-lg transition-colors">
+                                Отмена
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/components/header.html" type="text/html" id="header-template"></script>
+    <script>
+        // Global variables
+        let currentChallenge = null;
+
+        // Load header
+        fetch('/components/header.html')
+            .then(response => response.text())
+            .then(html => {
+                document.getElementById('header-container').innerHTML = html;
+                feather.replace();
+            });
+
+        // Check authentication
+        async function checkAuth() {
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                window.location.href = '/pages/lk.html';
+                return false;
+            }
+            return true;
+        }
+
+        // Get challenge ID from URL
+        function getChallengeIdFromUrl() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return parseInt(urlParams.get('id'));
+        }
+
+        // Load challenge details
+        async function loadChallengeDetails() {
+            const challengeId = getChallengeIdFromUrl();
+            if (!challengeId) {
+                showError('ID задания не указан');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/challenges/${challengeId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Задание не найдено');
+                }
+
+                currentChallenge = await response.json();
+                renderChallengeDetails();
+                loadChallengeSolves();
+
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        // Render challenge details
+        function renderChallengeDetails() {
+            const container = document.getElementById('challenge-content');
+            
+            container.innerHTML = `
+                <div class="max-w-4xl mx-auto">
+                    <!-- Challenge Header -->
+                    <div class="challenge-header rounded-2xl p-8 mb-8">
+                        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-3 mb-4">
+                                    <span class="px-3 py-1 rounded-full ${getCategoryColor(currentChallenge.category)} text-sm font-medium">
+                                        ${currentChallenge.category}
+                                    </span>
+                                    <span class="px-3 py-1 rounded-full ${getDifficultyColor(currentChallenge.difficulty)} text-sm font-medium">
+                                        ${getDifficultyText(currentChallenge.difficulty)}
+                                    </span>
+                                    <span class="px-3 py-1 rounded-full bg-green-600 text-sm font-medium">
+                                        ${currentChallenge.points} очков
+                                    </span>
+                                </div>
+                                <h1 class="text-4xl font-bold mb-4">${currentChallenge.title}</h1>
+                                <p class="text-gray-300 text-lg">${currentChallenge.description}</p>
+                            </div>
+                            <div class="text-center lg:text-right">
+                                <div class="text-3xl font-bold text-green-500 mb-2">${currentChallenge.points}</div>
+                                <div class="text-gray-400 mb-4">очков</div>
+                                ${currentChallenge.is_solved ? `
+                                    <span class="bg-green-600 text-white px-6 py-3 rounded-lg font-bold">
+                                        Решено
+                                    </span>
+                                ` : `
+                                    <button onclick="openSubmitFlagModal(${currentChallenge.id})" 
+                                            class="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-bold transition-colors">
+                                        Отправить флаг
+                                    </button>
+                                `}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid lg:grid-cols-3 gap-8">
+                        <!-- Main Content -->
+                        <div class="lg:col-span-2 space-y-8">
+                            <!-- Challenge Description -->
+                            <div class="info-card rounded-2xl p-6">
+                                <h3 class="text-xl font-bold mb-4">Описание задания</h3>
+                                <div class="prose prose-invert max-w-none">
+                                    <p class="text-gray-300 whitespace-pre-line">${currentChallenge.description}</p>
+                                </div>
+                            </div>
+
+                            <!-- Hint Section -->
+                            ${currentChallenge.hint ? `
+                                <div class="info-card rounded-2xl p-6">
+                                    <h3 class="text-xl font-bold mb-4 flex items-center">
+                                        <i data-feather="help-circle" class="w-5 h-5 mr-2 text-yellow-500"></i>
+                                        Подсказка
+                                    </h3>
+                                    <p class="text-gray-300">${currentChallenge.hint}</p>
+                                </div>
+                            ` : ''}
+
+                            <!-- Files Section -->
+                            ${currentChallenge.files ? `
+                                <div class="info-card rounded-2xl p-6">
+                                    <h3 class="text-xl font-bold mb-4 flex items-center">
+                                        <i data-feather="download" class="w-5 h-5 mr-2 text-blue-500"></i>
+                                        Файлы задания
+                                    </h3>
+                                    <div class="space-y-2">
+                                        ${JSON.parse(currentChallenge.files).map(file => `
+                                            <div class="flex items-center justify-between p-3 bg-gray-750 rounded-lg">
+                                                <div class="flex items-center">
+                                                    <i data-feather="file" class="w-4 h-4 mr-3 text-gray-400"></i>
+                                                    <span class="text-gray-300">${file.name}</span>
+                                                </div>
+                                                <a href="/uploads/${file.path}" 
+                                                   class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm transition-colors">
+                                                    Скачать
+                                                </a>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            ` : ''}
+                        </div>
+
+                        <!-- Sidebar -->
+                        <div class="space-y-6">
+                            <!-- Statistics -->
+                            <div class="info-card rounded-2xl p-6">
+                                <h3 class="text-xl font-bold mb-4">Статистика</h3>
+                                <div class="space-y-3">
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-gray-400">Решено раз:</span>
+                                        <span class="font-bold">${currentChallenge.solved_count}</span>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-gray-400">Сложность:</span>
+                                        <span class="font-bold ${getDifficultyColorClass(currentChallenge.difficulty)}">
+                                            ${getDifficultyText(currentChallenge.difficulty)}
+                                        </span>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-gray-400">Категория:</span>
+                                        <span class="font-bold">${currentChallenge.category}</span>
+                                    </div>
+                                    ${currentChallenge.first_blood_user ? `
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-gray-400">First Blood:</span>
+                                            <span class="font-bold text-red-500">${currentChallenge.first_blood_user}</span>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+
+                            <!-- Recent Solves -->
+                            <div class="info-card rounded-2xl p-6">
+                                <h3 class="text-xl font-bold mb-4">Последние решения</h3>
+                                <div id="solves-container">
+                                    <div class="text-center py-4">
+                                        <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-red-600 mx-auto mb-2"></div>
+                                        <p class="text-gray-400 text-sm">Загрузка...</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Dynamic Instance (if applicable) -->
+                            ${currentChallenge.dynamic_challenge ? `
+                                <div class="info-card rounded-2xl p-6">
+                                    <h3 class="text-xl font-bold mb-4">Динамическое задание</h3>
+                                    <div id="dynamic-instance-info">
+                                        <div class="text-center py-4">
+                                            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-red-600 mx-auto mb-2"></div>
+                                            <p class="text-gray-400 text-sm">Загрузка...</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            feather.replace();
+        }
+
+        // Load challenge solves
+        async function loadChallengeSolves() {
+            try {
+                const response = await fetch(`/api/challenges/${currentChallenge.id}/solves?limit=10`);
+                const data = await response.json();
+                
+                const container = document.getElementById('solves-container');
+                
+                if (data.solves.length === 0) {
+                    container.innerHTML = `
+                        <div class="text-center py-4">
+                            <i data-feather="clock" class="w-8 h-8 text-gray-500 mx-auto mb-2"></i>
+                            <p class="text-gray-400 text-sm">Пока нет решений</p>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = `
+                        <div class="solves-timeline space-y-3">
+                            ${data.solves.map(solve => `
+                                <div class="solve-item pl-6">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <div class="font-medium">${solve.team_name}</div>
+                                            <div class="text-xs text-gray-400">${new Date(solve.solved_at).toLocaleString()}</div>
+                                        </div>
+                                        ${solve.is_first_blood ? `
+                                            <span class="bg-red-600 text-white px-2 py-1 rounded text-xs">First Blood</span>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+                
+                feather.replace();
+                
+            } catch (error) {
+                console.error('Error loading solves:', error);
+                document.getElementById('solves-container').innerHTML = `
+                    <div class="text-center text-gray-500 py-4">
+                        <p class="text-sm">Ошибка загрузки решений</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Load dynamic instance info
+        async function loadDynamicInstanceInfo() {
+            if (!currentChallenge.dynamic_challenge) return;
+            
+            try {
+                const response = await fetch(`/api/dynamic/${currentChallenge.id}/instance`, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const instance = await response.json();
+                    document.getElementById('dynamic-instance-info').innerHTML = `
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-400">Статус:</span>
+                                <span class="px-2 py-1 rounded text-xs ${instance.status === 'running' ? 'bg-green-600' : 'bg-yellow-600'}">
+                                    ${getInstanceStatusText(instance.status)}
+                                </span>
+                            </div>
+                            ${instance.host && instance.port ? `
+                                <div class="flex justify-between items-center">
+                                    <span class="text-gray-400">Адрес:</span>
+                                    <span class="font-mono text-sm">${instance.host}:${instance.port}</span>
+                                </div>
+                            ` : ''}
+                            ${instance.expires_at ? `
+                                <div class="flex justify-between items-center">
+                                    <span class="text-gray-400">Истекает:</span>
+                                    <span class="text-sm">${new Date(instance.expires_at).toLocaleTimeString()}</span>
+                                </div>
+                            ` : ''}
+                            <button onclick="manageInstance(${currentChallenge.id})" 
+                                    class="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg transition-colors text-sm">
+                                Управление инстансом
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('dynamic-instance-info').innerHTML = `
+                        <div class="text-center">
+                            <button onclick="createInstance(${currentChallenge.id})" 
+                                    class="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg transition-colors">
+                                Запустить инстанс
+                            </button>
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                console.error('Error loading instance info:', error);
+            }
+        }
+
+        // Modal functions
+        function openSubmitFlagModal(challengeId) {
+            document.getElementById('modal-challenge-id').value = challengeId;
+            document.getElementById('submit-flag-modal').classList.remove('hidden');
+            document.getElementById('flag-input').focus();
+        }
+
+        function closeSubmitFlagModal() {
+            document.getElementById('submit-flag-modal').classList.add('hidden');
+            document.getElementById('submit-flag-form').reset();
+        }
+
+        // Submit flag
+        document.getElementById('submit-flag-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const challengeId = document.getElementById('modal-challenge-id').value;
+            const flag = document.getElementById('flag-input').value.trim();
+            
+            if (!flag) {
+                if (window.showNotification) {
+                    window.showNotification('Введите флаг', 'error');
+                }
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/submissions/', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        challenge_id: parseInt(challengeId),
+                        flag: flag
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    if (window.showNotification) {
+                        window.showNotification('Флаг принят! +' + result.points_awarded + ' очков', 'success');
+                    }
+                    closeSubmitFlagModal();
+                    loadChallengeDetails(); // Reload to show solved status
+                } else {
+                    if (window.showNotification) {
+                        window.showNotification(result.detail || 'Неверный флаг', 'error');
+                    }
+                }
+                
+            } catch (error) {
+                console.error('Error submitting flag:', error);
+                if (window.showNotification) {
+                    window.showNotification('Ошибка при отправке флага', 'error');
+                }
+            }
+        });
+
+        // Dynamic instance management
+        async function createInstance(challengeId) {
+            try {
+                const response = await fetch(`/api/dynamic/${challengeId}/instance`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    }
+                });
+                
+                if (response.ok) {
+                    if (window.showNotification) {
+                        window.showNotification('Инстанс запускается...', 'info');
+                    }
+                    setTimeout(loadDynamicInstanceInfo, 2000); // Reload after delay
+                } else {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Ошибка создания инстанса');
+                }
+            } catch (error) {
+                console.error('Error creating instance:', error);
+                if (window.showNotification) {
+                    window.showNotification(error.message, 'error');
+                }
+            }
+        }
+
+        async function manageInstance(challengeId) {
+            // In a real implementation, this would show instance management options
+            if (confirm('Перезапустить инстанс? Текущий будет остановлен.')) {
+                await createInstance(challengeId);
+            }
+        }
+
+        // Utility functions
+        function getCategoryColor(category) {
+            const colors = {
+                'WEB': 'bg-pink-600',
+                'CRYPTO': 'bg-blue-600',
+                'FORENSICS': 'bg-yellow-600',
+                'REVERSING': 'bg-purple-600',
+                'PWN': 'bg-red-600',
+                'MISC': 'bg-teal-600'
+            };
+            return colors[category] || 'bg-gray-600';
+        }
+
+        function getDifficultyColor(difficulty) {
+            const colors = {
+                'easy': 'bg-green-600',
+                'medium': 'bg-yellow-600',
+                'hard': 'bg-red-600'
+            };
+            return colors[difficulty] || 'bg-gray-600';
+        }
+
+        function getDifficultyColorClass(difficulty) {
+            const colors = {
+                'easy': 'text-green-500',
+                'medium': 'text-yellow-500',
+                'hard': 'text-red-500'
+            };
+            return colors[difficulty] || 'text-gray-500';
+        }
+
+        function getDifficultyText(difficulty) {
+            const texts = {
+                'easy': 'Легко',
+                'medium': 'Средне',
+                'hard': 'Сложно'
+            };
+            return texts[difficulty] || difficulty;
+        }
+
+        function getInstanceStatusText(status) {
+            const texts = {
+                'creating': 'Создается',
+                'running': 'Запущен',
+                'stopped': 'Остановлен',
+                'error': 'Ошибка'
+            };
+            return texts[status] || status;
+        }
+
+        function showError(message) {
+            document.getElementById('challenge-content').innerHTML = `
+                <div class="text-center py-12">
+                    <i data-feather="alert-triangle" class="w-12 h-12 text-red-500 mx-auto mb-4"></i>
+                    <h2 class="text-2xl font-bold mb-2">Ошибка</h2>
+                    <p class="text-gray-400 mb-6">${message}</p>
+                    <a href="/pages/arena.html" 
+                       class="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg transition-colors">
+                        Вернуться к арене
+                    </a>
+                </div>
+            `;
+            feather.replace();
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Check authentication
+            if (!await checkAuth()) return;
+            
+            // Load challenge details
+            await loadChallengeDetails();
+            
+            // Setup modal close handlers
+            document.getElementById('submit-flag-modal').addEventListener('click', function(e) {
+                if (e.target === this) closeSubmitFlagModal();
+            });
+            
+            // Close modal on Escape key
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    closeSubmitFlagModal();
+                }
+            });
+            
+            feather.replace();
+        });
+    </script>
+</body>
+</html>

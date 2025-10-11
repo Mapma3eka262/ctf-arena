@@ -1,0 +1,609 @@
+<!-- frontend/live_arena.html -->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CyberCTF Arena - Live Арена</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/assets/js/websocket.js"></script>
+    <script src="/assets/js/realtime-charts.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+        
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            background-color: #262626;
+            color: #FFFFFF;
+        }
+        
+        .arena-grid {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            grid-template-rows: auto 1fr auto;
+            gap: 1rem;
+            height: 100vh;
+            padding: 1rem;
+        }
+        
+        .header {
+            grid-column: 1 / -1;
+            background: #1a1a1a;
+            padding: 1rem;
+            border-radius: 8px;
+        }
+        
+        .main-content {
+            background: #1a1a1a;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-y: auto;
+        }
+        
+        .sidebar {
+            background: #1a1a1a;
+            padding: 1rem;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .footer {
+            grid-column: 1 / -1;
+            background: #1a1a1a;
+            padding: 1rem;
+            border-radius: 8px;
+        }
+        
+        .service-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            border-radius: 4px;
+            background: #2a2a2a;
+        }
+        
+        .service-online { color: #00FF00; }
+        .service-offline { color: #FF0000; }
+        
+        .chat-message {
+            padding: 0.5rem;
+            border-bottom: 1px solid #333;
+        }
+        
+        .chat-message:last-child {
+            border-bottom: none;
+        }
+        
+        .flag-submission {
+            background: #2a2a2a;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+        
+        .score-update {
+            animation: scorePulse 1s ease-in-out;
+        }
+        
+        @keyframes scorePulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        
+        .online-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #00FF00;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="arena-grid">
+        <!-- Header -->
+        <div class="header">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center gap-4">
+                    <h1 class="text-2xl font-bold">
+                        <span class="text-white">Cyber</span><span class="text-red-600">CTF</span> Live Арена
+                    </h1>
+                    <div class="flex items-center gap-2">
+                        <div class="online-indicator"></div>
+                        <span id="connection-status">Подключение...</span>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-6">
+                    <div class="text-center">
+                        <div class="text-sm text-gray-400">Команда</div>
+                        <div class="font-bold" id="team-name">-</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-sm text-gray-400">Счет</div>
+                        <div class="font-bold text-green-500" id="team-score">0</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-sm text-gray-400">Рейтинг</div>
+                        <div class="font-bold" id="team-rank">-</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-sm text-gray-400">Онлайн</div>
+                        <div class="font-bold" id="online-users-count">0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="grid grid-cols-2 gap-6 mb-6">
+                <!-- Submission Timeline -->
+                <div class="bg-gray-900 p-4 rounded">
+                    <h3 class="text-lg font-bold mb-3">Активность отправок</h3>
+                    <div class="h-48">
+                        <canvas id="submission-timeline"></canvas>
+                    </div>
+                </div>
+                
+                <!-- Score Progression -->
+                <div class="bg-gray-900 p-4 rounded">
+                    <h3 class="text-lg font-bold mb-3">Прогресс счета</h3>
+                    <div class="h-48">
+                        <canvas id="score-progression"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Challenges Grid -->
+            <div class="mb-6">
+                <h3 class="text-lg font-bold mb-3">Доступные задания</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="challenges-grid">
+                    <!-- Challenges loaded via JavaScript -->
+                </div>
+            </div>
+
+            <!-- Flag Submission -->
+            <div class="flag-submission">
+                <h3 class="text-lg font-bold mb-3">Отправка флага</h3>
+                <div class="flex gap-4">
+                    <select id="challenge-select" class="flex-1 bg-gray-800 border border-gray-700 rounded px-3 py-2">
+                        <option value="">Выберите задание...</option>
+                    </select>
+                    <input type="text" id="flag-input" 
+                           placeholder="CTF{...}" 
+                           class="flex-1 bg-gray-800 border border-gray-700 rounded px-3 py-2">
+                    <button id="submit-flag" 
+                            class="bg-red-600 hover:bg-red-700 px-6 py-2 rounded">
+                        Отправить
+                    </button>
+                </div>
+                <div id="flag-result" class="mt-2 hidden"></div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <!-- Services Status -->
+            <div>
+                <h3 class="text-lg font-bold mb-3">Статус сервисов</h3>
+                <div class="space-y-2" id="services-status">
+                    <!-- Services loaded via JavaScript -->
+                </div>
+            </div>
+
+            <!-- Team Chat -->
+            <div class="flex-1 flex flex-col">
+                <h3 class="text-lg font-bold mb-3">Чат команды</h3>
+                <div class="flex-1 bg-gray-900 rounded p-3 mb-3 overflow-y-auto" id="chat-messages">
+                    <!-- Chat messages appear here -->
+                </div>
+                <div class="flex gap-2">
+                    <input type="text" id="chat-input" 
+                           placeholder="Введите сообщение..." 
+                           class="flex-1 bg-gray-800 border border-gray-700 rounded px-3 py-2">
+                    <button id="send-chat" 
+                            class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded">
+                        <i data-feather="send" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Online Team Members -->
+            <div>
+                <h3 class="text-lg font-bold mb-3">Участники онлайн</h3>
+                <div id="online-members">
+                    <!-- Online members loaded via JavaScript -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <div class="flex justify-between items-center">
+                <div class="text-sm text-gray-400">
+                    Время до конца: <span id="time-remaining">--:--:--</span>
+                </div>
+                <div class="flex gap-4 text-sm">
+                    <span>Всего отправок: <span id="total-submissions">0</span></span>
+                    <span>Успешных: <span id="successful-submissions">0</span></span>
+                    <span>Успешность: <span id="success-rate">0%</span></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class LiveArena {
+            constructor() {
+                this.websocket = window.ctfWebSocket;
+                this.charts = window.realtimeCharts;
+                this.teamData = {};
+                this.init();
+            }
+
+            init() {
+                this.setupWebSocket();
+                this.loadInitialData();
+                this.setupEventListeners();
+                this.startCountdown();
+            }
+
+            setupWebSocket() {
+                const token = localStorage.getItem('authToken');
+                if (!token) {
+                    window.location.href = '/lk.html';
+                    return;
+                }
+
+                this.websocket.connect(token);
+
+                // WebSocket event handlers
+                this.websocket.on('connected', () => {
+                    this.updateConnectionStatus('connected', 'Подключено');
+                });
+
+                this.websocket.on('disconnected', () => {
+                    this.updateConnectionStatus('disconnected', 'Отключено');
+                });
+
+                this.websocket.on('error', () => {
+                    this.updateConnectionStatus('error', 'Ошибка подключения');
+                });
+
+                this.websocket.on('team_flag_submitted', (data) => {
+                    this.handleFlagSubmission(data);
+                });
+
+                this.websocket.on('flag_result', (data) => {
+                    this.showFlagResult(data);
+                });
+
+                this.websocket.on('chat_message', (data) => {
+                    this.addChatMessage(data);
+                });
+
+                this.websocket.on('user_connected', (data) => {
+                    this.updateOnlineMembers(data);
+                });
+
+                this.websocket.on('user_disconnected', (data) => {
+                    this.updateOnlineMembers(data);
+                });
+
+                this.websocket.on('team_status', (data) => {
+                    this.updateTeamStatus(data);
+                });
+            }
+
+            async loadInitialData() {
+                await this.loadTeamData();
+                await this.loadChallenges();
+                await this.loadServices();
+                await this.loadStatistics();
+            }
+
+            async loadTeamData() {
+                try {
+                    const response = await fetch('/api/users/me/team');
+                    if (response.ok) {
+                        const data = await response.json();
+                        this.teamData = data;
+                        this.updateTeamInfo(data);
+                    }
+                } catch (error) {
+                    console.error('Error loading team data:', error);
+                }
+            }
+
+            async loadChallenges() {
+                try {
+                    const response = await fetch('/api/challenges');
+                    if (response.ok) {
+                        const challenges = await response.json();
+                        this.renderChallenges(challenges);
+                    }
+                } catch (error) {
+                    console.error('Error loading challenges:', error);
+                }
+            }
+
+            async loadServices() {
+                try {
+                    const response = await fetch('/api/monitoring/services');
+                    if (response.ok) {
+                        const services = await response.json();
+                        this.renderServices(services);
+                    }
+                } catch (error) {
+                    console.error('Error loading services:', error);
+                }
+            }
+
+            async loadStatistics() {
+                try {
+                    const response = await fetch('/api/submissions/stats');
+                    if (response.ok) {
+                        const stats = await response.json();
+                        this.updateStatistics(stats);
+                    }
+                } catch (error) {
+                    console.error('Error loading statistics:', error);
+                }
+            }
+
+            setupEventListeners() {
+                // Flag submission
+                document.getElementById('submit-flag').addEventListener('click', () => {
+                    this.submitFlag();
+                });
+
+                // Chat message
+                document.getElementById('send-chat').addEventListener('click', () => {
+                    this.sendChatMessage();
+                });
+
+                // Enter key for chat
+                document.getElementById('chat-input').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        this.sendChatMessage();
+                    }
+                });
+
+                // Enter key for flag submission
+                document.getElementById('flag-input').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        this.submitFlag();
+                    }
+                });
+            }
+
+            submitFlag() {
+                const challengeSelect = document.getElementById('challenge-select');
+                const flagInput = document.getElementById('flag-input');
+                
+                const challengeId = challengeSelect.value;
+                const flag = flagInput.value.trim();
+
+                if (!challengeId || !flag) {
+                    this.showFlagResult({ result: { status: 'error', message: 'Выберите задание и введите флаг' } });
+                    return;
+                }
+
+                this.websocket.submitFlag(parseInt(challengeId), flag);
+                flagInput.value = '';
+            }
+
+            sendChatMessage() {
+                const chatInput = document.getElementById('chat-input');
+                const message = chatInput.value.trim();
+
+                if (message) {
+                    this.websocket.sendChatMessage(message);
+                    chatInput.value = '';
+                }
+            }
+
+            updateConnectionStatus(status, message) {
+                const statusElement = document.getElementById('connection-status');
+                const indicator = document.querySelector('.online-indicator');
+                
+                statusElement.textContent = message;
+                
+                if (status === 'connected') {
+                    indicator.style.background = '#00FF00';
+                } else if (status === 'disconnected') {
+                    indicator.style.background = '#FFA500';
+                } else {
+                    indicator.style.background = '#FF0000';
+                }
+            }
+
+            updateTeamInfo(teamData) {
+                document.getElementById('team-name').textContent = teamData.name;
+                document.getElementById('team-score').textContent = teamData.score;
+                document.getElementById('team-rank').textContent = `#${teamData.rank || '?'}`;
+            }
+
+            renderChallenges(challenges) {
+                const grid = document.getElementById('challenges-grid');
+                const select = document.getElementById('challenge-select');
+                
+                grid.innerHTML = '';
+                select.innerHTML = '<option value="">Выберите задание...</option>';
+                
+                challenges.forEach(challenge => {
+                    // Add to grid
+                    const challengeElement = document.createElement('div');
+                    challengeElement.className = 'bg-gray-800 p-4 rounded';
+                    challengeElement.innerHTML = `
+                        <div class="flex justify-between items-start mb-2">
+                            <h4 class="font-bold">${challenge.title}</h4>
+                            <span class="bg-red-600 text-white px-2 py-1 rounded text-sm">
+                                ${challenge.points}
+                            </span>
+                        </div>
+                        <p class="text-sm text-gray-400 mb-2">${challenge.category}</p>
+                        <p class="text-sm mb-3">${challenge.description.substring(0, 100)}...</p>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-400">Сложность: ${challenge.difficulty}</span>
+                            <span class="text-gray-400">Решено: ${challenge.solved_count}</span>
+                        </div>
+                    `;
+                    grid.appendChild(challengeElement);
+                    
+                    // Add to select
+                    const option = document.createElement('option');
+                    option.value = challenge.id;
+                    option.textContent = `${challenge.category}-${challenge.points}: ${challenge.title}`;
+                    select.appendChild(option);
+                });
+            }
+
+            renderServices(services) {
+                const container = document.getElementById('services-status');
+                container.innerHTML = '';
+                
+                services.forEach(service => {
+                    const statusClass = service.status === 'online' ? 'service-online' : 'service-offline';
+                    const statusIcon = service.status === 'online' ? 'check-circle' : 'x-circle';
+                    
+                    const serviceElement = document.createElement('div');
+                    serviceElement.className = 'service-status';
+                    serviceElement.innerHTML = `
+                        <i data-feather="${statusIcon}" class="w-4 h-4 ${statusClass}"></i>
+                        <span class="flex-1">${service.name}</span>
+                        <span class="text-sm text-gray-400">${service.type}</span>
+                    `;
+                    container.appendChild(serviceElement);
+                });
+                
+                feather.replace();
+            }
+
+            handleFlagSubmission(data) {
+                // This is called when another team member submits a flag
+                this.showNotification({
+                    title: 'Флаг отправлен',
+                    message: `${data.username} отправил флаг для задания`,
+                    type: 'info'
+                });
+            }
+
+            showFlagResult(data) {
+                const resultElement = document.getElementById('flag-result');
+                const result = data.result;
+                
+                resultElement.textContent = result.message;
+                resultElement.className = `mt-2 p-2 rounded ${
+                    result.status === 'accepted' ? 'bg-green-600' : 'bg-red-600'
+                }`;
+                resultElement.classList.remove('hidden');
+                
+                setTimeout(() => {
+                    resultElement.classList.add('hidden');
+                }, 5000);
+                
+                if (result.status === 'accepted') {
+                    // Reload team data to update score
+                    this.loadTeamData();
+                    this.loadStatistics();
+                }
+            }
+
+            addChatMessage(data) {
+                const container = document.getElementById('chat-messages');
+                const messageElement = document.createElement('div');
+                messageElement.className = 'chat-message';
+                
+                const time = new Date(data.timestamp).toLocaleTimeString();
+                messageElement.innerHTML = `
+                    <div class="flex justify-between text-sm text-gray-400 mb-1">
+                        <span class="font-bold">${data.username}</span>
+                        <span>${time}</span>
+                    </div>
+                    <div class="text-sm">${this.escapeHtml(data.message)}</div>
+                `;
+                
+                container.appendChild(messageElement);
+                container.scrollTop = container.scrollHeight;
+            }
+
+            updateOnlineMembers(data) {
+                // This would typically update a list of online team members
+                // Implementation depends on your specific requirements
+            }
+
+            updateTeamStatus(data) {
+                // Update various team status indicators
+                if (data.status) {
+                    // Update any team-specific status information
+                }
+            }
+
+            updateStatistics(stats) {
+                document.getElementById('total-submissions').textContent = stats.total;
+                document.getElementById('successful-submissions').textContent = stats.accepted;
+                document.getElementById('success-rate').textContent = `${stats.success_rate.toFixed(1)}%`;
+            }
+
+            startCountdown() {
+                // Set competition end time (for demo, 2 hours from now)
+                const endTime = new Date();
+                endTime.setHours(endTime.getHours() + 2);
+                
+                function update() {
+                    const now = new Date();
+                    const diff = endTime - now;
+                    
+                    if (diff <= 0) {
+                        document.getElementById('time-remaining').textContent = '00:00:00';
+                        return;
+                    }
+                    
+                    const hours = Math.floor(diff / (1000 * 60 * 60));
+                    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+                    
+                    document.getElementById('time-remaining').textContent = 
+                        `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                }
+                
+                update();
+                setInterval(update, 1000);
+            }
+
+            escapeHtml(unsafe) {
+                return unsafe
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#039;");
+            }
+
+            showNotification(notification) {
+                // Use the WebSocket notification system
+                this.websocket.showNotification(notification);
+            }
+        }
+
+        // Initialize the live arena when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            new LiveArena();
+        });
+    </script>
+</body>
+</html>

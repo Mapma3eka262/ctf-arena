@@ -1,0 +1,665 @@
+<!-- frontend/pages/arena.html -->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CyberCTF Arena - Арена</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="/assets/css/animations.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+        
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            background-color: #262626;
+            color: #FFFFFF;
+        }
+        
+        .challenge-card {
+            transition: all 0.3s ease;
+            border-left: 4px solid transparent;
+        }
+        
+        .challenge-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        .challenge-card.solved {
+            border-left-color: #00FF00;
+        }
+        
+        .challenge-card.unsolved {
+            border-left-color: #EA000F;
+        }
+        
+        .difficulty-easy { border-left-color: #00FF00; }
+        .difficulty-medium { border-left-color: #FFA500; }
+        .difficulty-hard { border-left-color: #EA000F; }
+        
+        .category-web { background: linear-gradient(135deg, #FF6384, #C850C0); }
+        .category-crypto { background: linear-gradient(135deg, #36A2EB, #4BC0C0); }
+        .category-forensics { background: linear-gradient(135deg, #FFCE56, #FF9F40); }
+        .category-reversing { background: linear-gradient(135deg, #9966FF, #C850C0); }
+        .category-pwn { background: linear-gradient(135deg, #FF6384, #EA000F); }
+        .category-misc { background: linear-gradient(135deg, #4BC0C0, #36A2EB); }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-900">
+    <!-- Header -->
+    <div id="header-container"></div>
+
+    <!-- Main Content -->
+    <div class="container mx-auto px-4 py-8">
+        <div class="grid lg:grid-cols-4 gap-8">
+            <!-- Sidebar -->
+            <div class="lg:col-span-1 space-y-6">
+                <!-- Team Info -->
+                <div class="bg-gray-800 rounded-2xl p-6">
+                    <h3 class="text-xl font-bold mb-4">Команда</h3>
+                    <div id="team-info">
+                        <div class="text-center py-8">
+                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto mb-4"></div>
+                            <p class="text-gray-400">Загрузка...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Statistics -->
+                <div class="bg-gray-800 rounded-2xl p-6">
+                    <h3 class="text-xl font-bold mb-4">Статистика</h3>
+                    <div id="team-stats">
+                        <div class="text-center py-8">
+                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto mb-4"></div>
+                            <p class="text-gray-400">Загрузка...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Categories Filter -->
+                <div class="bg-gray-800 rounded-2xl p-6">
+                    <h3 class="text-xl font-bold mb-4">Категории</h3>
+                    <div id="categories-filter" class="space-y-2">
+                        <!-- Categories will be loaded here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Arena -->
+            <div class="lg:col-span-3">
+                <!-- Arena Header -->
+                <div class="bg-gray-800 rounded-2xl p-6 mb-6">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div>
+                            <h1 class="text-3xl font-bold mb-2">CTF Арена</h1>
+                            <p class="text-gray-400">Решайте задания, получайте очки и поднимайтесь в рейтинге</p>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <div class="text-right">
+                                <div class="text-sm text-gray-400">Текущий ранг</div>
+                                <div class="text-2xl font-bold text-red-600" id="team-rank">#-</div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-sm text-gray-400">Общий счет</div>
+                                <div class="text-2xl font-bold text-green-500" id="team-score">0</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Challenges Grid -->
+                <div class="mb-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl font-bold">Доступные задания</h2>
+                        <div class="flex gap-2">
+                            <select id="difficulty-filter" class="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white">
+                                <option value="">Все сложности</option>
+                                <option value="easy">Легкие</option>
+                                <option value="medium">Средние</option>
+                                <option value="hard">Сложные</option>
+                            </select>
+                            <select id="category-filter" class="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white">
+                                <option value="">Все категории</option>
+                                <!-- Categories will be populated -->
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="challenges-container">
+                        <div class="grid gap-4">
+                            <!-- Challenges will be loaded here -->
+                            <div class="text-center py-12">
+                                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
+                                <p class="text-gray-400">Загрузка заданий...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Leaderboard -->
+                <div class="bg-gray-800 rounded-2xl p-6">
+                    <h2 class="text-2xl font-bold mb-4">Таблица лидеров</h2>
+                    <div id="leaderboard-container">
+                        <div class="text-center py-8">
+                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto mb-4"></div>
+                            <p class="text-gray-400">Загрузка рейтинга...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Challenge Modal -->
+    <div id="challenge-modal" class="fixed inset-0 bg-black bg-opacity-75 z-50 hidden">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
+                <div class="flex items-center justify-between p-6 border-b border-gray-700">
+                    <h3 id="modal-challenge-title" class="text-xl font-bold"></h3>
+                    <button id="modal-close" class="text-gray-400 hover:text-white">
+                        <i data-feather="x" class="w-6 h-6"></i>
+                    </button>
+                </div>
+                <div class="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+                    <div id="modal-challenge-content">
+                        <!-- Challenge content will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/components/header.html" type="text/html" id="header-template"></script>
+    <script src="/assets/js/websocket.js"></script>
+    <script>
+        // Global variables
+        let currentChallenges = [];
+        let currentCategories = [];
+        let currentTeam = null;
+
+        // Load header
+        fetch('/components/header.html')
+            .then(response => response.text())
+            .then(html => {
+                document.getElementById('header-container').innerHTML = html;
+                feather.replace();
+            });
+
+        // Check authentication
+        async function checkAuth() {
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                window.location.href = '/pages/lk.html';
+                return false;
+            }
+
+            try {
+                const response = await fetch('/api/users/me', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    localStorage.removeItem('authToken');
+                    window.location.href = '/pages/lk.html';
+                    return false;
+                }
+
+                return true;
+            } catch (error) {
+                localStorage.removeItem('authToken');
+                window.location.href = '/pages/lk.html';
+                return false;
+            }
+        }
+
+        // Load team information
+        async function loadTeamInfo() {
+            try {
+                const response = await fetch('/api/teams/my', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    }
+                });
+
+                if (response.ok) {
+                    const team = await response.json();
+                    currentTeam = team;
+                    
+                    document.getElementById('team-info').innerHTML = `
+                        <div class="text-center">
+                            <div class="w-16 h-16 bg-red-600 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                                <span class="text-white font-bold text-lg">${team.name.charAt(0).toUpperCase()}</span>
+                            </div>
+                            <h4 class="font-bold text-lg mb-1">${team.name}</h4>
+                            <p class="text-gray-400 text-sm mb-3">${team.members.length} участников</p>
+                            <div class="bg-gray-700 rounded-lg p-3">
+                                <div class="text-2xl font-bold text-green-500 mb-1">${team.score}</div>
+                                <div class="text-xs text-gray-400">очков</div>
+                            </div>
+                        </div>
+                    `;
+
+                    document.getElementById('team-score').textContent = team.score;
+                    
+                    // Update rank
+                    updateTeamRank();
+                    
+                } else {
+                    document.getElementById('team-info').innerHTML = `
+                        <div class="text-center text-gray-500">
+                            <i data-feather="users" class="w-8 h-8 mx-auto mb-2"></i>
+                            <p>Не в команде</p>
+                        </div>
+                    `;
+                    feather.replace();
+                }
+            } catch (error) {
+                console.error('Error loading team info:', error);
+            }
+        }
+
+        // Load team statistics
+        async function loadTeamStats() {
+            try {
+                const response = await fetch('/api/submissions/stats', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    }
+                });
+
+                if (response.ok) {
+                    const stats = await response.json();
+                    
+                    document.getElementById('team-stats').innerHTML = `
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-400">Всего отправок:</span>
+                                <span class="font-bold">${stats.total}</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-400">Принято:</span>
+                                <span class="font-bold text-green-500">${stats.accepted}</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-400">Отклонено:</span>
+                                <span class="font-bold text-red-500">${stats.rejected}</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-400">Успешность:</span>
+                                <span class="font-bold">${stats.success_rate}%</span>
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading team stats:', error);
+            }
+        }
+
+        // Update team rank
+        async function updateTeamRank() {
+            try {
+                const response = await fetch('/api/teams/leaderboard?limit=100');
+                const data = await response.json();
+                
+                const teamIndex = data.leaderboard.findIndex(team => team.id === currentTeam.id);
+                if (teamIndex !== -1) {
+                    document.getElementById('team-rank').textContent = `#${teamIndex + 1}`;
+                }
+            } catch (error) {
+                console.error('Error updating team rank:', error);
+            }
+        }
+
+        // Load categories
+        async function loadCategories() {
+            try {
+                const response = await fetch('/api/challenges/categories');
+                currentCategories = await response.json();
+                
+                // Update category filter dropdown
+                const categoryFilter = document.getElementById('category-filter');
+                categoryFilter.innerHTML = '<option value="">Все категории</option>' +
+                    currentCategories.map(cat => `<option value="${cat}">${cat}</option>`).join('');
+                
+                // Update categories sidebar
+                const categoriesContainer = document.getElementById('categories-filter');
+                categoriesContainer.innerHTML = currentCategories.map(category => `
+                    <label class="flex items-center cursor-pointer">
+                        <input type="checkbox" value="${category}" class="category-checkbox rounded bg-gray-700 border-gray-600 text-red-600 focus:ring-red-600">
+                        <span class="ml-2 text-gray-300">${category}</span>
+                    </label>
+                `).join('');
+                
+            } catch (error) {
+                console.error('Error loading categories:', error);
+            }
+        }
+
+        // Load challenges
+        async function loadChallenges() {
+            try {
+                const difficulty = document.getElementById('difficulty-filter').value;
+                const category = document.getElementById('category-filter').value;
+                
+                let url = '/api/challenges/';
+                const params = new URLSearchParams();
+                
+                if (difficulty) params.append('difficulty', difficulty);
+                if (category) params.append('category', category);
+                
+                if (params.toString()) {
+                    url += '?' + params.toString();
+                }
+                
+                const response = await fetch(url, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    }
+                });
+                
+                currentChallenges = await response.json();
+                renderChallenges();
+                
+            } catch (error) {
+                console.error('Error loading challenges:', error);
+            }
+        }
+
+        // Render challenges
+        function renderChallenges() {
+            const container = document.getElementById('challenges-container');
+            
+            if (currentChallenges.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12">
+                        <i data-feather="search" class="w-12 h-12 text-gray-500 mx-auto mb-4"></i>
+                        <p class="text-gray-400">Задания не найдены</p>
+                    </div>
+                `;
+                feather.replace();
+                return;
+            }
+            
+            container.innerHTML = `
+                <div class="grid md:grid-cols-2 gap-4">
+                    ${currentChallenges.map(challenge => `
+                        <div class="challenge-card bg-gray-800 rounded-xl p-6 ${challenge.is_solved ? 'solved' : 'unsolved'} difficulty-${challenge.difficulty}">
+                            <div class="flex justify-between items-start mb-3">
+                                <div>
+                                    <h3 class="font-bold text-lg mb-1">${challenge.title}</h3>
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <span class="px-2 py-1 text-xs rounded ${getCategoryColor(challenge.category)}">
+                                            ${challenge.category}
+                                        </span>
+                                        <span class="px-2 py-1 text-xs rounded ${getDifficultyColor(challenge.difficulty)}">
+                                            ${getDifficultyText(challenge.difficulty)}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-xl font-bold text-green-500">${challenge.points}</div>
+                                    <div class="text-xs text-gray-400">очков</div>
+                                </div>
+                            </div>
+                            
+                            <p class="text-gray-400 text-sm mb-4 line-clamp-2">${challenge.description}</p>
+                            
+                            <div class="flex justify-between items-center">
+                                <div class="text-xs text-gray-500">
+                                    Решено: ${challenge.solved_count} раз
+                                </div>
+                                <div class="flex gap-2">
+                                    <button onclick="viewChallenge(${challenge.id})" 
+                                            class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded text-sm transition-colors">
+                                        Подробнее
+                                    </button>
+                                    ${challenge.is_solved ? `
+                                        <span class="bg-green-600 text-white px-3 py-1 rounded text-sm">
+                                            Решено
+                                        </span>
+                                    ` : `
+                                        <button onclick="submitFlag(${challenge.id})" 
+                                                class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm transition-colors">
+                                            Отправить флаг
+                                        </button>
+                                    `}
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        // Utility functions
+        function getCategoryColor(category) {
+            const colors = {
+                'WEB': 'bg-pink-600',
+                'CRYPTO': 'bg-blue-600',
+                'FORENSICS': 'bg-yellow-600',
+                'REVERSING': 'bg-purple-600',
+                'PWN': 'bg-red-600',
+                'MISC': 'bg-teal-600'
+            };
+            return colors[category] || 'bg-gray-600';
+        }
+
+        function getDifficultyColor(difficulty) {
+            const colors = {
+                'easy': 'bg-green-600',
+                'medium': 'bg-yellow-600',
+                'hard': 'bg-red-600'
+            };
+            return colors[difficulty] || 'bg-gray-600';
+        }
+
+        function getDifficultyText(difficulty) {
+            const texts = {
+                'easy': 'Легко',
+                'medium': 'Средне',
+                'hard': 'Сложно'
+            };
+            return texts[difficulty] || difficulty;
+        }
+
+        // View challenge details
+        async function viewChallenge(challengeId) {
+            try {
+                const response = await fetch(`/api/challenges/${challengeId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    }
+                });
+                
+                const challenge = await response.json();
+                
+                document.getElementById('modal-challenge-title').textContent = challenge.title;
+                document.getElementById('modal-challenge-content').innerHTML = `
+                    <div class="space-y-4">
+                        <div class="flex gap-2 mb-4">
+                            <span class="px-3 py-1 rounded-full ${getCategoryColor(challenge.category)} text-sm">
+                                ${challenge.category}
+                            </span>
+                            <span class="px-3 py-1 rounded-full ${getDifficultyColor(challenge.difficulty)} text-sm">
+                                ${getDifficultyText(challenge.difficulty)}
+                            </span>
+                            <span class="px-3 py-1 rounded-full bg-green-600 text-sm">
+                                ${challenge.points} очков
+                            </span>
+                        </div>
+                        
+                        <div>
+                            <h4 class="font-bold mb-2">Описание</h4>
+                            <p class="text-gray-300">${challenge.description}</p>
+                        </div>
+                        
+                        ${challenge.hint ? `
+                            <div>
+                                <h4 class="font-bold mb-2">Подсказка</h4>
+                                <p class="text-gray-300">${challenge.hint}</p>
+                            </div>
+                        ` : ''}
+                        
+                        <div class="bg-gray-700 rounded-lg p-4">
+                            <h4 class="font-bold mb-2">Статистика</h4>
+                            <p class="text-gray-300">Решено ${challenge.solved_count} раз</p>
+                            ${challenge.first_blood_user ? `
+                                <p class="text-gray-300">First Blood: ${challenge.first_blood_user}</p>
+                            ` : ''}
+                        </div>
+                        
+                        <div class="flex gap-2 pt-4">
+                            <button onclick="submitFlag(${challenge.id})" 
+                                    class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors">
+                                Отправить флаг
+                            </button>
+                            <button onclick="closeModal()" 
+                                    class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors">
+                                Закрыть
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                document.getElementById('challenge-modal').classList.remove('hidden');
+                
+            } catch (error) {
+                console.error('Error loading challenge details:', error);
+            }
+        }
+
+        // Submit flag
+        async function submitFlag(challengeId) {
+            const flag = prompt('Введите флаг:');
+            if (!flag) return;
+            
+            try {
+                const response = await fetch('/api/submissions/', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        challenge_id: challengeId,
+                        flag: flag
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    if (window.showNotification) {
+                        window.showNotification('Флаг принят! +' + result.points_awarded + ' очков', 'success');
+                    }
+                    
+                    // Reload data
+                    loadChallenges();
+                    loadTeamInfo();
+                    loadTeamStats();
+                    loadLeaderboard();
+                    
+                } else {
+                    if (window.showNotification) {
+                        window.showNotification(result.detail || 'Неверный флаг', 'error');
+                    }
+                }
+                
+            } catch (error) {
+                console.error('Error submitting flag:', error);
+                if (window.showNotification) {
+                    window.showNotification('Ошибка при отправке флага', 'error');
+                }
+            }
+        }
+
+        // Close modal
+        function closeModal() {
+            document.getElementById('challenge-modal').classList.add('hidden');
+        }
+
+        // Load leaderboard
+        async function loadLeaderboard() {
+            try {
+                const response = await fetch('/api/teams/leaderboard?limit=10');
+                const data = await response.json();
+                
+                const container = document.getElementById('leaderboard-container');
+                container.innerHTML = `
+                    <div class="space-y-2">
+                        ${data.leaderboard.map((team, index) => `
+                            <div class="flex items-center justify-between p-3 bg-gray-750 rounded-lg ${team.id === currentTeam?.id ? 'border-2 border-red-600' : ''}">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center text-sm font-bold">
+                                        ${index + 1}
+                                    </div>
+                                    <div>
+                                        <div class="font-semibold">${team.name}</div>
+                                        <div class="text-xs text-gray-400">${team.country || 'Не указана'}</div>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="font-bold text-green-500">${team.score}</div>
+                                    <div class="text-xs text-gray-400">${team.member_count} участников</div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                
+            } catch (error) {
+                console.error('Error loading leaderboard:', error);
+            }
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Check authentication
+            if (!await checkAuth()) return;
+            
+            // Load initial data
+            await Promise.all([
+                loadTeamInfo(),
+                loadTeamStats(),
+                loadCategories(),
+                loadChallenges(),
+                loadLeaderboard()
+            ]);
+            
+            // Setup event listeners
+            document.getElementById('difficulty-filter').addEventListener('change', loadChallenges);
+            document.getElementById('category-filter').addEventListener('change', loadChallenges);
+            document.getElementById('modal-close').addEventListener('click', closeModal);
+            
+            // Close modal on overlay click
+            document.getElementById('challenge-modal').addEventListener('click', function(e) {
+                if (e.target === this) closeModal();
+            });
+            
+            // Initialize WebSocket
+            const token = localStorage.getItem('authToken');
+            if (window.ctfWebSocket && token) {
+                window.ctfWebSocket.connect(token);
+                
+                // Listen for real-time updates
+                window.ctfWebSocket.on('team_flag_submitted', (data) => {
+                    // Refresh data when someone from team submits a flag
+                    loadChallenges();
+                    loadTeamInfo();
+                    loadTeamStats();
+                    loadLeaderboard();
+                });
+            }
+            
+            feather.replace();
+        });
+    </script>
+</body>
+</html>

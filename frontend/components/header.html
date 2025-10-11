@@ -1,0 +1,312 @@
+<!-- frontend/components/header.html -->
+<header class="sticky top-0 z-50 bg-black bg-opacity-80 backdrop-blur-md border-b border-gray-800">
+    <div class="container mx-auto px-4 py-3">
+        <div class="flex justify-between items-center">
+            <!-- Logo -->
+            <div class="flex items-center space-x-4">
+                <a href="/index.html" class="flex items-center space-x-2 group">
+                    <div class="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center group-hover:bg-red-700 transition-colors">
+                        <span class="text-white font-bold text-sm">CTF</span>
+                    </div>
+                    <span class="text-xl font-bold">
+                        <span class="text-white">Cyber</span>
+                        <span class="text-red-600">CTF</span>
+                    </span>
+                </a>
+                
+                <!-- Connection Status -->
+                <div class="hidden md:flex items-center space-x-2 text-sm">
+                    <div id="connection-indicator" class="flex items-center space-x-1">
+                        <div class="w-2 h-2 bg-gray-500 rounded-full connection-pulse"></div>
+                        <span id="connection-status" class="text-gray-400">Подключение...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <nav class="hidden md:flex items-center space-x-6">
+                <a href="/index.html" class="text-gray-300 hover:text-white transition-colors nav-link">
+                    Главная
+                </a>
+                <a href="/pages/arena.html" class="text-gray-300 hover:text-white transition-colors nav-link">
+                    Арена
+                </a>
+                <a href="/pages/live_arena.html" class="text-gray-300 hover:text-white transition-colors nav-link">
+                    Live Арена
+                </a>
+                <a href="/pages/team_analytics.html" class="text-gray-300 hover:text-white transition-colors nav-link">
+                    Аналитика
+                </a>
+                
+                <!-- Admin Link (only for admins) -->
+                <template id="admin-link-template">
+                    <a href="/pages/admin.html" class="text-yellow-400 hover:text-yellow-300 transition-colors nav-link">
+                        Администрирование
+                    </a>
+                </template>
+            </nav>
+
+            <!-- User Section -->
+            <div class="flex items-center space-x-4">
+                <!-- Notification Bell -->
+                <div id="notification-bell-container">
+                    <!-- Notification bell component will be injected here -->
+                </div>
+                
+                <!-- User Info -->
+                <div id="user-section" class="hidden">
+                    <div class="flex items-center space-x-3">
+                        <div class="text-right">
+                            <div id="user-name" class="text-white font-semibold text-sm"></div>
+                            <div id="user-team" class="text-gray-400 text-xs"></div>
+                        </div>
+                        <div class="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center">
+                            <i data-feather="user" class="w-4 h-4 text-gray-300"></i>
+                        </div>
+                        <button id="logout-btn" class="text-gray-400 hover:text-white transition-colors">
+                            <i data-feather="log-out" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Login Button -->
+                <div id="login-section">
+                    <a href="/pages/lk.html" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">
+                        Войти
+                    </a>
+                </div>
+
+                <!-- Mobile Menu Button -->
+                <button id="mobile-menu-button" class="md:hidden text-gray-400 hover:text-white">
+                    <i data-feather="menu" class="w-6 h-6"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Menu -->
+    <div id="mobile-menu" class="md:hidden bg-gray-900 border-t border-gray-800 hidden">
+        <div class="container mx-auto px-4 py-4 space-y-3">
+            <a href="/index.html" class="block text-gray-300 hover:text-white transition-colors py-2">
+                Главная
+            </a>
+            <a href="/pages/arena.html" class="block text-gray-300 hover:text-white transition-colors py-2">
+                Арена
+            </a>
+            <a href="/pages/live_arena.html" class="block text-gray-300 hover:text-white transition-colors py-2">
+                Live Арена
+            </a>
+            <a href="/pages/team_analytics.html" class="block text-gray-300 hover:text-white transition-colors py-2">
+                Аналитика
+            </a>
+            <div id="mobile-admin-link" class="hidden">
+                <a href="/pages/admin.html" class="block text-yellow-400 hover:text-yellow-300 transition-colors py-2">
+                    Администрирование
+                </a>
+            </div>
+            
+            <!-- Mobile User Info -->
+            <div id="mobile-user-section" class="hidden pt-4 border-t border-gray-800">
+                <div class="flex items-center space-x-3 mb-3">
+                    <div class="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center">
+                        <i data-feather="user" class="w-4 h-4 text-gray-300"></i>
+                    </div>
+                    <div>
+                        <div id="mobile-user-name" class="text-white font-semibold"></div>
+                        <div id="mobile-user-team" class="text-gray-400 text-sm"></div>
+                    </div>
+                </div>
+                <button id="mobile-logout-btn" class="w-full bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">
+                    Выйти
+                </button>
+            </div>
+        </div>
+    </div>
+</header>
+
+<script>
+class HeaderComponent {
+    constructor() {
+        this.currentUser = null;
+        this.init();
+    }
+
+    init() {
+        this.loadComponents();
+        this.setupEventListeners();
+        this.checkAuthentication();
+    }
+
+    loadComponents() {
+        // Load notification bell
+        this.loadNotificationBell();
+        
+        // Update Feather icons
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
+    }
+
+    async loadNotificationBell() {
+        try {
+            const response = await fetch('/components/notification-bell.html');
+            const html = await response.text();
+            document.getElementById('notification-bell-container').innerHTML = html;
+        } catch (error) {
+            console.error('Error loading notification bell:', error);
+        }
+    }
+
+    setupEventListeners() {
+        // Mobile menu toggle
+        document.getElementById('mobile-menu-button').addEventListener('click', () => {
+            this.toggleMobileMenu();
+        });
+
+        // Logout buttons
+        document.getElementById('logout-btn')?.addEventListener('click', () => {
+            this.logout();
+        });
+
+        document.getElementById('mobile-logout-btn')?.addEventListener('click', () => {
+            this.logout();
+        });
+
+        // Close mobile menu when clicking outside
+        document.addEventListener('click', (event) => {
+            const mobileMenu = document.getElementById('mobile-menu');
+            const menuButton = document.getElementById('mobile-menu-button');
+            
+            if (!mobileMenu.contains(event.target) && !menuButton.contains(event.target)) {
+                this.hideMobileMenu();
+            }
+        });
+
+        // Update connection status from WebSocket
+        if (window.ctfWebSocket) {
+            window.ctfWebSocket.on('connected', () => {
+                this.updateConnectionStatus('connected', 'Подключено');
+            });
+
+            window.ctfWebSocket.on('disconnected', () => {
+                this.updateConnectionStatus('disconnected', 'Отключено');
+            });
+
+            window.ctfWebSocket.on('error', () => {
+                this.updateConnectionStatus('error', 'Ошибка подключения');
+            });
+        }
+    }
+
+    async checkAuthentication() {
+        const token = localStorage.getItem('authToken');
+        if (!token) {
+            this.showLoginSection();
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/users/me', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                this.currentUser = await response.json();
+                this.showUserSection();
+            } else {
+                this.showLoginSection();
+            }
+        } catch (error) {
+            console.error('Authentication check failed:', error);
+            this.showLoginSection();
+        }
+    }
+
+    showUserSection() {
+        document.getElementById('user-section').classList.remove('hidden');
+        document.getElementById('login-section').classList.add('hidden');
+        document.getElementById('mobile-user-section').classList.remove('hidden');
+
+        // Update user info
+        document.getElementById('user-name').textContent = this.currentUser.username;
+        document.getElementById('mobile-user-name').textContent = this.currentUser.username;
+        
+        if (this.currentUser.team) {
+            document.getElementById('user-team').textContent = this.currentUser.team.name;
+            document.getElementById('mobile-user-team').textContent = this.currentUser.team.name;
+        }
+
+        // Show admin link if user is admin
+        if (this.currentUser.is_admin) {
+            const adminLink = document.getElementById('admin-link-template').content.cloneNode(true);
+            document.querySelector('nav').appendChild(adminLink);
+            document.getElementById('mobile-admin-link').classList.remove('hidden');
+        }
+
+        // Update Feather icons
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
+    }
+
+    showLoginSection() {
+        document.getElementById('user-section').classList.add('hidden');
+        document.getElementById('login-section').classList.remove('hidden');
+        document.getElementById('mobile-user-section').classList.add('hidden');
+    }
+
+    logout() {
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('refreshToken');
+        
+        if (window.ctfWebSocket) {
+            window.ctfWebSocket.disconnect();
+        }
+        
+        window.location.href = '/index.html';
+    }
+
+    toggleMobileMenu() {
+        const mobileMenu = document.getElementById('mobile-menu');
+        if (mobileMenu.classList.contains('hidden')) {
+            this.showMobileMenu();
+        } else {
+            this.hideMobileMenu();
+        }
+    }
+
+    showMobileMenu() {
+        document.getElementById('mobile-menu').classList.remove('hidden');
+    }
+
+    hideMobileMenu() {
+        document.getElementById('mobile-menu').classList.add('hidden');
+    }
+
+    updateConnectionStatus(status, message) {
+        const indicator = document.querySelector('#connection-indicator div');
+        const statusText = document.getElementById('connection-status');
+        
+        statusText.textContent = message;
+        
+        const colors = {
+            connected: 'bg-green-500',
+            disconnected: 'bg-yellow-500',
+            error: 'bg-red-500'
+        };
+        
+        // Remove all color classes
+        indicator.classList.remove('bg-green-500', 'bg-yellow-500', 'bg-red-500', 'bg-gray-500');
+        
+        // Add appropriate color
+        indicator.classList.add(colors[status] || 'bg-gray-500');
+    }
+}
+
+// Initialize header when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    new HeaderComponent();
+});
+</script>
