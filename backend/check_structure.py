@@ -110,7 +110,7 @@ def check_dependencies():
         'docker': 'docker',
         'celery': 'celery',
         'bcrypt': 'bcrypt',
-        'jwt': 'PyJWT',
+        #'jwt': 'PyJWT',
         'requests': 'requests'
     }
     
